@@ -1,5 +1,5 @@
 {
-  "C_Cpp.intelliSenseEngine": "default",
+  "C_Cpp.intelliSenseEngine": "disabled",
   "idf.extensionActivationMode": "always",
   "cmake.configureOnOpen": false,
   "cmake.configureOnEdit": false,
@@ -31,6 +31,6 @@
   "clangd.arguments": [
     "--background-index",
     "--query-driver=**",
-    "--compile-commands-dir=/Users/travisdao/Reginleif/build"
+    "--compile-commands-dir=/Users/travisdao/Desktop/Reginleif/build"
   ]
 }

@@ -13,8 +13,8 @@ constexpr gpio_num_t SCL_GPIO = GPIO_NUM_9;
 
 namespace ServoConfig {
 	constexpr float SERVO_FREQ = 50.0f;
-	constexpr float SERVOMIN = 160.0f;  // raw 12-bit tick value, 0-4096 range
-	constexpr float SERVOMAX = 560.0f;  // raw 12-bit tick value, 0-4096 range
+	constexpr float SERVO_MIN_PULSE = 160.0f;
+	constexpr float SERVO_MAX_PULSE = 560.0f;
 }
 
 constexpr int next_leg_gait[5] = {
@@ -47,22 +47,28 @@ class Base {
 
 		complimentary_angle_t imu_angle = { 0.0f, 0.0f };
 
+		void init_servo_driver();
+		void init_legs();
+		void init_imu();
+		void calibrate_servos();
+
+		void input_controller(Vec3 input);
+
+		void update_legs();
+		void update_imu();
+		void update_speed();
+		void update_velocity();
+		void update_orientation();
+
+		void move();
+
 	public:
 		static i2c_dev_t pca;
 		static mpu6050_handle_t mpu;
 		
 		Base();
 		void init();
-
-		void input_controller(Vec3 input);
-		void update(unsigned long dt_ms);
-		void update_legs();
-		void update_imu();
-		void update_speed();
-		void update_velocity();
-		void move();
-
-		void update_orientation();
+		void update(float dt_s);
 
 		int get_new_leg(int leg) {
 			return next_leg_gait[leg + 1];
@@ -80,6 +86,7 @@ class Base {
 			return this->current_airborne_leg;
 		}
 		Vec3 get_imu_angles();
+		
 		Vec3 get_target_orientation() {
 			return this->target_orientation;
 		}

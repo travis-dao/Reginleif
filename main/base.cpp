@@ -23,7 +23,13 @@ Base::Base() {
 }
 
 void Base::init() {
-	// init servos
+	init_servo_driver();
+	init_legs();
+	calibrate_servos();
+	// init_imu();
+}
+
+void Base::init_servo_driver() {
 	ESP_ERROR_CHECK(i2cdev_init());
 	memset(&pca, 0, sizeof(i2c_dev_t));
 	ESP_ERROR_CHECK(pca9685_init_desc(&pca, PCA9685_ADDR_BASE, I2C_PORT, SDA_GPIO, SCL_GPIO));
@@ -32,15 +38,24 @@ void Base::init() {
 
 	printf("Driver set up.\n");
 	ThisThread::sleep_for(1000ms);
+}
 
-	for(int i = 0; i < 4; i++) {
+void Base::init_legs() {
+	for (int i = 0; i < 4; i++) {
 		this->legs[i] = new Leg(i);
 	}
 
 	printf("Initialized legs to neutral position.\n");
 	ThisThread::sleep_for(1000ms);
+}
 
-	// init IMU
+void Base::calibrate_servos() {
+	pca9685_set_pwm_value(&pca, 3, angle_to_pulse(90)); // coxa
+	pca9685_set_pwm_value(&pca, 4, angle_to_pulse(0)); // femur
+	pca9685_set_pwm_value(&pca, 5, angle_to_pulse(0)); // tibia
+}
+
+void Base::init_imu() {
 	mpu = mpu6050_create(I2C_PORT, MPU6050_I2C_ADDR);
 
 	uint8_t device_id = 0;
@@ -57,9 +72,6 @@ void Base::init() {
 	printf("Do not move MPU6050 during startup.\n");
 	ThisThread::sleep_for(1000ms);
 
-	// Note: this driver has no built-in offset calibration like calcOffsets();
-	// the complementary filter's first call seeds roll/pitch from the
-	// accelerometer only, so keep the robot still through that first update.
 	this->current_orientation = get_imu_angles();
 
 	printf("IMU ready.\n");
@@ -160,8 +172,8 @@ void Base::update_speed() {
 //   }
 // }
 
-void Base::update(unsigned long dt_ms) {
-	this->dt_s = dt_ms / 1000.0f;
+void Base::update(float dt_s) {
+	this->dt_s = dt_s;
 
 	input_controller(Vec3 {1.0f, 0.0f, 0.0f});
 

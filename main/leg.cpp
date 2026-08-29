@@ -41,11 +41,19 @@ Theta3 Leg::ik(const float x, const float y, const float z) {
 	Theta3 new_angles;
 
 	float d = sqrt(x * x + y * y);
-	float r = d - l;
+	float r = d - LegConfig::l;
 	float c = sqrt(z * z + r * r);
 
-	float cos2 = std::clamp((a * a + c * c - b * b) / (2 * a * c), -1.0f, 1.0f);
-	float cos3 = std::clamp((a * a + b * b - c * c) / (2 * a * b), -1.0f, 1.0f);
+	float cos2 = std::clamp(
+		(LegConfig::a * LegConfig::a + c * c - LegConfig::b * LegConfig::b) / (2 * LegConfig::a * c), 
+		-1.0f, 
+		1.0f
+	);
+	float cos3 = std::clamp(
+		(LegConfig::a * LegConfig::a + LegConfig::b * LegConfig::b - c * c) / (2 * LegConfig::a * LegConfig::b), 
+		-1.0f, 
+		1.0f
+	);
 
 	new_angles.theta1 = atan2(y, x) * 180.0f / M_PI; // coxa
 	new_angles.theta2 = atan2(r, -z) * 180.0f / M_PI + acos(cos2) * 180.0f / M_PI; // femur
@@ -72,15 +80,9 @@ void Leg::move_leg() {
 	printf("Leg %d |	theta1: %f, theta2: %f, theta3 %f\n", this->info.id, target_angles.theta1, target_angles.theta2, target_angles.theta3);
 
 	// move servos
-	esp_err_t err;
-	err = pca9685_set_pwm_value(&Base::pca, this->info.id * 3,     angle_to_pulse(target_angles.theta1));
-	if (err != ESP_OK) printf("Failed to set servo PWM (theta1)\n");
-
-	err = pca9685_set_pwm_value(&Base::pca, this->info.id * 3 + 1, angle_to_pulse(target_angles.theta2));
-	if (err != ESP_OK) printf("Failed to set servo PWM (theta2)\n");
-
-	err = pca9685_set_pwm_value(&Base::pca, this->info.id * 3 + 2, angle_to_pulse(target_angles.theta3));
-	if (err != ESP_OK) printf("Failed to set servo PWM (theta3)\n");
+	pca9685_set_pwm_value(&Base::pca, this->info.id * 3,     angle_to_pulse(target_angles.theta1));
+	pca9685_set_pwm_value(&Base::pca, this->info.id * 3 + 1, angle_to_pulse(target_angles.theta2));
+	pca9685_set_pwm_value(&Base::pca, this->info.id * 3 + 2, angle_to_pulse(target_angles.theta3));
 
 	// update members
 	this->angles = target_angles;

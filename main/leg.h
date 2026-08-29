@@ -3,11 +3,11 @@
 
 #include "helpers.h"
 
-#pragma region Leg Config
-
-constexpr float a = 89.806f; // coxa -> femur
-constexpr float b = 141.701f; // femur -> tibia
-constexpr float l = 45.125f; // body -> coxa
+namespace LegConfig {
+	constexpr float a = 89.806f; // coxa -> femur
+	constexpr float b = 141.701f; // femur -> tibia
+	constexpr float l = 45.125f; // body -> coxa
+}
 
 struct Theta3 {
   	float theta1, theta2, theta3;
@@ -34,8 +34,6 @@ namespace MovementConfig {
 	constexpr float STEP_HEIGHT_MM = 100.0f;    // mm, max lift height
 	constexpr float SWING_DURATION_S = 0.250f;   // s, swing duration
 }
-
-#pragma endregion
 
 enum LegState {
  	HOLD, SWING, STANCE
@@ -65,16 +63,16 @@ class Leg {
 		Theta3 ik(const float x, const float y, const float z);
 		static Theta3 get_inverted_angles(Theta3 angles);
 
-	public:
-		Leg(int id);
-
 		void move_leg();
 
 		void update_swing(const float step_length, const float step_height);
 		void update_stance();
-		void update_state(const LegState state);
 		void update_orientation();
+
+	public:
+		Leg(int id);
 		void update();
+		void update_state(const LegState state);
 		
 		bool is_grounded() {
 			return state != SWING;

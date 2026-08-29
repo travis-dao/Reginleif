@@ -20,12 +20,10 @@ static void control_task(void *arg)
         int64_t dt_us = now_us - last_time_us;
         last_time_us = now_us;
 
-        base.update(dt_us);
+        double dt_s = dt_us * 1e-6;
+        base.update(dt_s);
 
-        vTaskDelayUntil(
-            &last_wake,
-            pdMS_TO_TICKS(10)
-        );
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(10));
     }
 }
 
@@ -33,12 +31,6 @@ extern "C" void app_main()
 {
     base.init();
 
-    xTaskCreate(
-        control_task,
-        "control",
-        4096,
-        nullptr,
-        5,
-        nullptr
-    );
+    // calls base::update() at set interval
+    // xTaskCreate(control_task, "control", 4096, nullptr, 5, nullptr);
 }

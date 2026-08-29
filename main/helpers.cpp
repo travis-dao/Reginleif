@@ -110,7 +110,7 @@ float map_float(float value, float from_low, float from_high, float to_low, floa
 // cuz dumbass servos take pulses instead of angles
 uint16_t angle_to_pulse(float angle) {
 	angle = std::clamp(angle, 0.0f, 180.0f);
-	return map_float(angle, 0.0f, 180.0f, ServoConfig::SERVOMIN, ServoConfig::SERVOMAX);
+	return map_float(angle, 0.0f, 180.0f, ServoConfig::SERVO_MIN_PULSE, ServoConfig::SERVO_MAX_PULSE);
 }
 
 bool is_adjacent_leg(int ref_leg_idx, int leg_idx) {

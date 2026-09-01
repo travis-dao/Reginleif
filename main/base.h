@@ -8,8 +8,8 @@
 
 // I2C config
 constexpr i2c_port_t I2C_PORT = I2C_NUM_0;
-constexpr gpio_num_t SDA_GPIO = GPIO_NUM_8;
-constexpr gpio_num_t SCL_GPIO = GPIO_NUM_9;
+constexpr gpio_num_t SDA_GPIO = GPIO_NUM_3;
+constexpr gpio_num_t SCL_GPIO = GPIO_NUM_4;
 
 namespace ServoConfig {
 	constexpr float SERVO_FREQ = 50.0f;
@@ -31,8 +31,6 @@ enum MoveState {
 	REST, WALK, RUN, TURN
 };
 
-constexpr float SPEED_LERP_RATE = 4.0f;
-
 class Base {
 	private:
 		float current_speed;
@@ -41,7 +39,7 @@ class Base {
 		float dt_s;
 		int current_airborne_leg;
 		Vec3 current_orientation;
-		Vec3 target_orientation = Vec3 { 0.0f, 0.0f, 0.0f};
+		Vec3 target_orientation = Vec3 { 0.0f, 0.0f, 0.0f };
 		MoveState state;
 		Vec3 input;
 
@@ -86,7 +84,7 @@ class Base {
 			return this->current_airborne_leg;
 		}
 		Vec3 get_imu_angles();
-		
+
 		Vec3 get_target_orientation() {
 			return this->target_orientation;
 		}

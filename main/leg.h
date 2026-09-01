@@ -4,13 +4,14 @@
 #include "helpers.h"
 
 namespace LegConfig {
-	constexpr float a = 89.806f; // coxa -> femur
-	constexpr float b = 141.701f; // femur -> tibia
-	constexpr float l = 45.125f; // body -> coxa
+	constexpr float femur_length = 89.806f;
+	constexpr float tibia_length = 141.701f;
+	constexpr float body_to_coxa_x_offset = 45.125f;
+	constexpr float body_to_coxa_z_offset = -10.0f;
 }
 
 struct Theta3 {
-  	float theta1, theta2, theta3;
+  	float coxa, femur, tibia;
 };
 
 namespace NeutralConfig {
@@ -60,7 +61,7 @@ class Leg {
 		Info info;
 		LegState state;
 
-		Theta3 ik(const float x, const float y, const float z);
+		Theta3 ik(float x, float y, float z);
 		static Theta3 get_inverted_angles(Theta3 angles);
 
 		void move_leg();
@@ -72,7 +73,10 @@ class Leg {
 	public:
 		Leg(int id);
 		void update();
-		void update_state(const LegState state);
+
+		void update_state(const LegState state) {
+			this->state = state;
+		}
 		
 		bool is_grounded() {
 			return state != SWING;

@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <string.h>
 #include <math.h>
 #include <algorithm>
@@ -39,6 +40,7 @@ Base::Base() {
  * initializes and calibrates IMU.
  */
 void Base::init() {
+	printf("Reginleif Initialization Sequence...\n");
 	init_servo_driver();
 	init_legs();
 	calibrate_servos();
@@ -50,7 +52,6 @@ void Base::init() {
  *
  * Sets up the I2C descriptor for the PCA9685, configures the driver at
  * its I2C address, and sets the PWM frequency used for servo control.
- * Blocks briefly after setup to allow the driver to stabilize.
  */
 void Base::init_servo_driver() {
 	ESP_ERROR_CHECK(i2cdev_init());

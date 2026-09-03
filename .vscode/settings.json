@@ -22,7 +22,7 @@
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"
   ],
-  "idf.port": "detect",
+  "idf.port": "/dev/tty.usbmodem101",
   "idf.currentSetup": "/Users/travisdao/.espressif/v5.2.7/esp-idf",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s3"
@@ -32,5 +32,6 @@
     "--background-index",
     "--query-driver=**",
     "--compile-commands-dir=/Users/travisdao/Desktop/Reginleif/build"
-  ]
+  ],
+  "idf.flashType": "JTAG"
 }

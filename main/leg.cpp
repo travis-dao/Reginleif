@@ -112,7 +112,7 @@ Theta3 Leg::ik(float x, float y, float z) {
 	// update output
 	new_angles.coxa = atan2(y, x) * 180.0f / M_PI; // coxa
 	new_angles.femur = atan2(r, -z) * 180.0f / M_PI + acos(cos2) * 180.0f / M_PI; // femur
-	new_angles.tibia = 180.0 - acos(cos3) * 180.0f / M_PI; // tibia
+	new_angles.tibia = acos(cos3) * 180.0f / M_PI; // tibia
 
 	return new_angles;
 }
@@ -134,15 +134,7 @@ void Leg::move_leg() {
 	Theta3 target_angles = ik(adjusted.x, adjusted.y, adjusted.z);
 
 	// flip angles cuz servos on left leg flipped
-	// target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
-
-	if (this->info.is_right_leg) {
-		target_angles.tibia = 180.0f - target_angles.tibia;
-	} else {
-		target_angles.coxa = 180.0f - target_angles.coxa;
-		target_angles.femur = 180.0f - target_angles.femur;
-
-	}
+	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
 	
 	printf("Leg %d |	coxa: %f, femur: %f, theta3 %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
@@ -260,6 +252,6 @@ void Leg::update() {
 		this->last_grounded_pos = this->target_pos;
 	}
 
-	// 4. move servos based target pos
+	// 4. move servos based on target pos
 	move_leg();
 }

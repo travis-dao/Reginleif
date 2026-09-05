@@ -67,6 +67,8 @@ class Base {
 		Base();
 		void init();
 		void update(float dt_s);
+		
+		void drive_servo(float dt_s, float idx, float min, float max);
 
 		int get_new_leg(int leg) {
 			return next_leg_gait[leg + 1];

@@ -33,5 +33,5 @@
     "--query-driver=**",
     "--compile-commands-dir=/Users/travisdao/Desktop/Reginleif/build"
   ],
-  "idf.flashType": "JTAG"
+  "idf.flashType": "UART"
 }

@@ -21,7 +21,8 @@ static void control_task(void *arg)
         last_time_us = now_us;
 
         double dt_s = dt_us * 1e-6;
-        base.update(dt_s);
+        // base.update(dt_s);
+        base.drive_servo(dt_s, 3, 0, 180);
 
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(10));
     }

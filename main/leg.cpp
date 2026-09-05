@@ -43,7 +43,7 @@ Leg::Leg(int id) : info(id) {
 	this->phase = 0.0f;
 	this->state = HOLD;
 
-	// move_leg();
+	move_leg();
 }
 
 /**
@@ -59,7 +59,7 @@ Leg::Leg(int id) : info(id) {
 Theta3 Leg::get_inverted_angles(Theta3 out_angles) {
 	out_angles.coxa = 180.0f - out_angles.coxa;
 	out_angles.femur = 180.0f - out_angles.femur;
-	out_angles.tibia = 180.0f - out_angles.tibia;
+	// out_angles.tibia = 180.0f - out_angles.tibia;
 
 	return out_angles;
 }
@@ -134,7 +134,15 @@ void Leg::move_leg() {
 	Theta3 target_angles = ik(adjusted.x, adjusted.y, adjusted.z);
 
 	// flip angles cuz servos on left leg flipped
-	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
+	// target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
+
+	if (this->info.is_right_leg) {
+		target_angles.tibia = 180.0f - target_angles.tibia;
+	} else {
+		target_angles.coxa = 180.0f - target_angles.coxa;
+		target_angles.femur = 180.0f - target_angles.femur;
+
+	}
 	
 	printf("Leg %d |	coxa: %f, femur: %f, theta3 %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 

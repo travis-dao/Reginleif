@@ -87,8 +87,55 @@ void Base::init_legs() {
  */
 void Base::calibrate_servos() {
 	pca9685_set_pwm_value(&pca, 3, angle_to_pulse(90)); // coxa
-	pca9685_set_pwm_value(&pca, 4, angle_to_pulse(0)); // femur
+	pca9685_set_pwm_value(&pca, 4, angle_to_pulse(45)); // femur
 	pca9685_set_pwm_value(&pca, 5, angle_to_pulse(0)); // tibia
+}
+
+void Base::drive_servo(float dt_s, float idx, float min, float max) {
+    enum State { MOVE_TO_MAX, PAUSE_AT_MAX, MOVE_TO_MIN, PAUSE_AT_MIN };
+    static State state = MOVE_TO_MAX;
+    static float cur   = min;
+    static float timer = 0.0f;
+
+    constexpr float kMoveDuration  = 2.0f; // seconds for 0->180 (or 180->0)
+    constexpr float kPauseDuration = 1.0f; // seconds paused at each end
+    const float speed = (max - min) / kMoveDuration; // deg/s
+
+    switch (state) {
+        case MOVE_TO_MAX:
+            cur += speed * dt_s;
+            if (cur >= max) {
+                cur = max;
+                timer = 0.0f;
+                state = PAUSE_AT_MAX;
+            }
+            break;
+
+        case PAUSE_AT_MAX:
+            timer += dt_s;
+            if (timer >= kPauseDuration) {
+                state = MOVE_TO_MIN;
+            }
+            break;
+
+        case MOVE_TO_MIN:
+            cur -= speed * dt_s;
+            if (cur <= min) {
+                cur = min;
+                timer = 0.0f;
+                state = PAUSE_AT_MIN;
+            }
+            break;
+
+        case PAUSE_AT_MIN:
+            timer += dt_s;
+            if (timer >= kPauseDuration) {
+                state = MOVE_TO_MAX;
+            }
+            break;
+    }
+
+    pca9685_set_pwm_value(&pca, 3, angle_to_pulse(cur));
 }
 
 /**

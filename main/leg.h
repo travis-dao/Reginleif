@@ -15,7 +15,7 @@ struct Theta3 {
 };
 
 namespace NeutralConfig {
-	constexpr Vec3 neutral_offset = { 90.0f, 100.0f, -50.0f};
+	constexpr Vec3 neutral_offset = { 90.0f, 100.0f, -50.0f };
 
 	const Vec3 neutral_vector[4] = { 
 		{ 1, 1, 1},  // Front Left
@@ -34,6 +34,16 @@ namespace MovementConfig {
 	constexpr float MAX_STEP_LENGTH_MM = 0.0f;
 	constexpr float STEP_HEIGHT_MM = 100.0f;    // mm, max lift height
 	constexpr float SWING_DURATION_S = 0.250f;   // s, swing duration
+}
+
+namespace PIDConfig {
+	// PID
+	constexpr float K_p = 1.5;
+	constexpr float K_i = 0.0;
+	constexpr float K_d = 0.0;
+
+	constexpr float INTEGRAL_LIMIT_DEG = 30.0;  // max contribution of integral_sum, in degrees
+	constexpr float COMPENSATION_LIMIT_DEG = 30.0; // max total correction angle, in degrees
 }
 
 enum LegState {

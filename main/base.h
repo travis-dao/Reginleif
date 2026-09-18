@@ -25,7 +25,7 @@ constexpr int next_leg_gait[5] = {
 	/*  3 -> */ 0,
 };
 
-constexpr Vec3 body_offset = {42.0f, 66.7f, 0.0f};
+constexpr Vec3 body_offset = { 42.0f, 66.7f, 0.0f };
 
 enum MoveState {
 	REST, WALK, RUN, TURN
@@ -44,6 +44,7 @@ class Base {
 		Vec3 input;
 
 		complimentary_angle_t imu_angle = { 0.0f, 0.0f };
+		Mat3 rot_mat;
 
 		void init_servo_driver();
 		void init_legs();
@@ -57,6 +58,7 @@ class Base {
 		void update_speed();
 		void update_velocity();
 		void update_orientation();
+		void update_rot_matrix(float delta_t);
 
 		void move();
 

@@ -32,6 +32,5 @@ extern "C" void app_main()
 {
     base.init();
 
-    // calls base::update() at set interval
     // xTaskCreate(control_task, "control", 4096, nullptr, 5, nullptr);
 }

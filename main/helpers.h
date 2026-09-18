@@ -28,6 +28,17 @@ struct Vec3 {
 
 Vec3 clamp_vec3(const Vec3& v, float min_val, float max_val);
 
+
+struct Mat3 {
+	Vec3 rows[3];
+
+	// Matrix * Vector
+	Vec3 operator*(const Vec3& v) const;
+
+	// Matrix * Matrix
+	Mat3 operator*(const Mat3& o) const;
+};
+
 #pragma endregion
 
 bool is_adjacent_leg(int ref_leg_idx, int leg_idx);

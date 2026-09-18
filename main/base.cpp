@@ -20,10 +20,6 @@ float SPEED_LERP_RATE = 4.0f;
 
 /**
  * @brief Constructs a Base object with default/neutral state.
- *
- * Initializes velocity to zero, marks no leg as airborne (-1),
- * sets current speed to zero, sets the movement state to REST,
- * and zeroes out the target orientation.
  */
 Base::Base() {
 	this->velocity = Vec3 {0.0f, 0.0f, 0.0f};
@@ -35,9 +31,6 @@ Base::Base() {
 
 /**
  * @brief Performs full hardware and subsystem initialization for the robot base.
- *
- * Initializes the servo driver, creates and initializes all legs, and
- * initializes and calibrates IMU.
  */
 void Base::init() {
 	printf("Reginleif Initialization Sequence...\n");
@@ -49,9 +42,6 @@ void Base::init() {
 
 /**
  * @brief Initializes the I2C bus and PCA9685 PWM/servo driver.
- *
- * Sets up the I2C descriptor for the PCA9685, configures the driver at
- * its I2C address, and sets the PWM frequency used for servo control.
  */
 void Base::init_servo_driver() {
 	ESP_ERROR_CHECK(i2cdev_init());
@@ -66,9 +56,6 @@ void Base::init_servo_driver() {
 
 /**
  * @brief Allocates and initializes all four robot legs.
- *
- * Creates a new Leg object for each of the four legs (indices 0–3),
- * setting them to their neutral starting position.
  */
 void Base::init_legs() {
 	for (int i = 0; i < 4; i++) {
@@ -81,9 +68,6 @@ void Base::init_legs() {
 
 /**
  * @brief Sends initial calibration pulses to a single set of servo channels.
- *
- * Sets the coxa, femur, and tibia servos to fixed
- * reference angles (X°, Y°, Z° respectively) for calibration purposes.
  */
 void Base::calibrate_servos() {
 	pca9685_set_pwm_value(&pca, 3, angle_to_pulse(90)); // coxa
@@ -140,11 +124,6 @@ void Base::drive_servo(float dt_s, float idx, float min, float max) {
 
 /**
  * @brief Initializes and configures the MPU6050 IMU sensor.
- *
- * Creates the IMU handle, repeatedly attempts to verify communication
- * with the device via its device ID, configures accelerometer/gyroscope
- * full-scale ranges, wakes the sensor, and captures an initial orientation
- * reading.
  */
 void Base::init_imu() {
 	mpu = mpu6050_create(I2C_PORT, MPU6050_I2C_ADDR);
@@ -171,9 +150,6 @@ void Base::init_imu() {
 
 /**
  * @brief Updates the internal state of all four legs.
- *
- * Calls update() on each Leg object, advancing their motion/state logic
- * for the current control cycle.
  */
 void Base::update_legs() {
 	for (int i = 0; i < 4; i++) {
@@ -183,11 +159,6 @@ void Base::update_legs() {
 
 /**
  * @brief Reads sensor data from the IMU and updates the current orientation.
- *
- * Retrieves accelerometer and gyroscope readings from the MPU6050,
- * applies a complementary filter to combine them into a stable angle
- * estimate, and updates the base's current orientation accordingly.
- * Logs an error and returns early if either sensor read fails.
  */
 void Base::update_imu() {
 	mpu6050_acce_value_t acce;
@@ -211,11 +182,6 @@ void Base::update_imu() {
 
 /**
  * @brief Advances the walking gait by selecting and moving the next leg.
- *
- * Does nothing if the base is in the REST state. Otherwise, checks
- * whether all legs are currently grounded; if so, selects the next leg
- * to lift (based on the previously airborne leg) and transitions it
- * into the SWING state.
  */
 void Base::move() {
 	if (state == REST) {
@@ -240,9 +206,6 @@ void Base::move() {
 /**
  * @brief Updates movement state based on user/controller input.
  *
- * Stores the given input vector and sets the base's state to REST if
- * the input has zero magnitude, or WALK otherwise.
- *
  * @param input The desired movement direction/magnitude vector.
  */
 void Base::input_controller(Vec3 input) {
@@ -257,12 +220,6 @@ void Base::input_controller(Vec3 input) {
 
 /**
  * @brief Smoothly updates the current movement speed toward a target speed.
- *
- * Determines a target speed based on the current state (zero for REST,
- * a computed stride-based speed for WALK/RUN), then exponentially
- * interpolates the current speed toward that target using the elapsed
- * time step and SPEED_LERP_RATE. Snaps very small speeds to exactly
- * zero to prevent residual leg motion.
  */
 void Base::update_speed() {
 	float target_speed;
@@ -292,22 +249,8 @@ void Base::update_speed() {
 	}
 }
 
-// void Base::update_velocity() {
-//   float magnitude = sqrt(this->input.x * this->input.x + this->input.y * this->input.y);
-//
-//   if (magnitude > 0.0) {
-//     this->velocity = this->input / magnitude * this->current_speed;
-//   } else {
-//     this->velocity = { 0, 0, 0 };
-//   }
-// }
-
 /**
  * @brief Runs one full update cycle for the robot base.
- *
- * Stores the elapsed time step, applies a hardcoded forward input,
- * updates the current speed, updates the target body orientation, 
- * advances the gait/leg-swing logic, and updates all legs.
  *
  * @param dt_s Elapsed time in seconds since the last update call.
  */
@@ -326,10 +269,6 @@ void Base::update(float dt_s) {
 
 /**
  * @brief Computes a target body orientation based on the currently airborne leg.
- *
- * Sets target roll/pitch (x/y) offsets depending on which leg (0–3) is
- * currently swinging, used to shift body weight/balance during gait.
- * Defaults to a level (zero) orientation when no leg is airborne.
  */
 void Base::update_orientation() {
 	float a = 10.0f;
@@ -356,6 +295,60 @@ void Base::update_orientation() {
 			target_orientation.y = 0.0f;
 			break;
 	}
+}
+
+
+/**
+ * @brief Calculates and updates rotation matrix for PID controller
+ */
+void Base::update_rot_matrix(float delta_t) {
+  const static Vec3 ref_angles { 0, 0, 0 };
+
+  static Vec3 prev_error { 0, 0, 0 };
+  static Vec3 integral_sum { 0, 0, 0 };
+
+  // error
+  Vec3 error = ref_angles - get_imu_angles();
+
+  // pid stuff
+  Vec3 proportional_term = error * PIDConfig::K_p;
+
+  integral_sum = integral_sum + (error * delta_t);
+//   integral_sum = clamp_vec3(integral_sum, -PIDConfig::INTEGRAL_LIMIT_DEG, PIDConfig::INTEGRAL_LIMIT_DEG); // anti-windup
+
+  Vec3 integral_term = integral_sum * PIDConfig::K_i;
+
+  Vec3 derivative_term = (error - prev_error) / delta_t * PIDConfig::K_d;
+  // low pass filter, kalmin filter
+
+  // add the P, I, D terms
+  Vec3 compensation_angles_deg = proportional_term + integral_term + derivative_term;
+//   compensation_angles_deg = clamp_vec3(compensation_angles_deg, -PIDConfig::COMPENSATION_LIMIT_DEG, PIDConfig::COMPENSATION_LIMIT_DEG); // output saturation
+
+  Vec3 compensation_angles = compensation_angles_deg * (M_PI / 180);
+
+  // rotation matrix
+  Mat3 rotation_matrix_x {{
+    {1, 								0, 							0},
+    {0, cos(compensation_angles.x), -sin(compensation_angles.x)},
+    {0, sin(compensation_angles.x), cos(compensation_angles.x)}
+  }};
+  Mat3 rotation_matrix_y {{
+    {cos(compensation_angles.y),  0, sin(compensation_angles.y)},
+    {0, 								1, 							 0},
+    {-sin(compensation_angles.y), 0, cos(compensation_angles.y)}
+  }};
+  Mat3 rotation_matrix_z {{
+    {cos(compensation_angles.z), -sin(compensation_angles.z), 0},
+    {sin(compensation_angles.z), cos(compensation_angles.z),  0},
+    {0, 							   0, 							 1}
+  }};
+
+  Mat3 rotation_matrix = rotation_matrix_x * rotation_matrix_y * rotation_matrix_z;
+
+  prev_error = error;
+
+  this->rot_mat = rotation_matrix;
 }
 
 /**

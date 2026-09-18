@@ -10,9 +10,6 @@
 /**
  * @brief Constructs an Info struct describing a leg's identity and position on the body.
  *
- * Stores the leg's numeric ID and derives whether it is a front leg
- * (IDs 0 or 1) and whether it is a right-side leg (IDs 1 or 2).
- *
  * @param id Numeric identifier of the leg (0–3).
  */
 Info::Info(int id) {
@@ -23,13 +20,6 @@ Info::Info(int id) {
 
 /**
  * @brief Constructs a Leg object and initializes its neutral position and state.
- *
- * Computes the leg's base neutral position (scaled by neutral_offset)
- * and true neutral position (scaled by neutral_offset plus body_offset)
- * from the per-leg neutral vector. Initializes current, target, and
- * last-grounded positions to the base neutral position, resets the
- * gait phase to zero, and sets the initial state to HOLD. Moves leg to
- * starting positions (neutrals).
  *
  * @param id Numeric identifier of the leg (0–3), passed through to Info.
  */
@@ -49,10 +39,6 @@ Leg::Leg(int id) : info(id) {
 /**
  * @brief Inverts joint angles for legs with reverse-mounted servos (left side).
  *
- * Left-side servos are physically mounted in reverse, so their computed
- * angles must be mirrored (180° minus the angle) to produce correct
- * physical motion.
- *
  * @param out_angles The originally computed coxa/femur/tibia angles.
  * @return Theta3 The inverted angles suitable for reverse-mounted servos.
  */
@@ -66,12 +52,6 @@ Theta3 Leg::get_inverted_angles(Theta3 out_angles) {
 
 /**
  * @brief Computes inverse kinematics joint angles for a target foot position.
- *
- * Given a target (x, y, z) position relative to the leg, calculates the
- * coxa angle from the horizontal projection, then uses the law of
- * cosines on the femur/tibia triangle (accounting for the coxa-to-body
- * offsets) to compute the femur and tibia angles needed to reach that
- * position.
  *
  * @param x Target x-coordinate of the foot.
  * @param y Target y-coordinate of the foot.
@@ -119,12 +99,6 @@ Theta3 Leg::ik(float x, float y, float z) {
 
 /**
  * @brief Converts the leg's target position into servo angles and drives the servos.
- *
- * Adjusts the target position for right-side leg mirroring, runs inverse
- * kinematics to get joint angles, flips those angles if needed for
- * reverse-mounted (left-side) servos, logs the result, and sends PWM
- * commands to the corresponding PCA9685 channels. Updates the stored
- * angles and current position to reflect the newly commanded pose.
  */
 void Leg::move_leg() {
 	Vec3 adjusted = this->target_pos;
@@ -151,11 +125,6 @@ void Leg::move_leg() {
 /**
  * @brief Adjusts the leg's target height to compensate for body orientation.
  *
- * Computes a z-offset based on the body's target roll/pitch (via tangent
- * of the target orientation angles) and this leg's true neutral x/y
- * position, so that the leg raises or lowers to help level the body.
- * Applies this offset on top of the leg's base neutral z position.
- *
  * @note PID controller migration/tuning is still pending.
  */
 void Leg::update_orientation() {
@@ -173,13 +142,24 @@ void Leg::update_orientation() {
 	this->target_pos.z = base_neutral_pos.z + this->orientation_offset;
 }
 
+
+// PID Controller
+
+// PID implementation
+// if (delta_t > 0) {
+// 	const Vec3 imu_angles = get_imu_angles();
+// 	const Mat3 rot_mat = get_rotation_matrix(delta_t, imu_angles, K_p, K_i, K_d);
+
+// 	for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
+// 		if (!leg_state.is_leg_airborne[leg_idx]) {
+// 		target[leg_idx] = rot_mat * target[leg_idx];
+// 		}
+// 	}
+// }
+
+
 /**
  * @brief Updates the leg's target position while in the STANCE state.
- *
- * Resets the gait phase to zero and shifts the target x-position
- * backward relative to the body, based on the body's current speed
- * and elapsed time step, simulating the leg pushing the body forward
- * while planted on the ground.
  */
 void Leg::update_stance() {
 	// reset phase for swing state
@@ -191,12 +171,6 @@ void Leg::update_stance() {
 
 /**
  * @brief Updates the leg's target position while in the SWING state.
- *
- * Advances the foot along a sinusoidal velocity profile in x (forward
- * step motion) and a sinusoidal height profile in z (lift arc), based
- * on the given step length and step height. Advances the gait phase
- * each call; once the phase reaches 1.0, transitions the leg into the
- * STANCE state.
  *
  * @param step_length Horizontal distance the foot should travel during the swing.
  * @param step_height Maximum vertical lift height during the swing arc.
@@ -222,13 +196,6 @@ void Leg::update_swing(const float step_length, const float step_height) {
 
 /**
  * @brief Runs one full per-leg update cycle.
- *
- * Updates the orientation-based height offset, then updates the target
- * position according to the leg's current state (SWING, STANCE, or
- * otherwise resets to base neutral). If the leg is currently grounded,
- * records its position as the new last-grounded reference (used for
- * step-length calculations). Finally, converts the resulting target
- * position into servo commands via move_leg().
  */
 void Leg::update() {
 	// 1. update orientation offset and target_pos.z based on body's orientation

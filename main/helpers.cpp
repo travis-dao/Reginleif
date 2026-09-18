@@ -134,6 +134,39 @@ Vec3 clamp_vec3(const Vec3& v, float min_val, float max_val) {
 
 #pragma endregion
 
+
+#pragma region Mat3
+
+// Matrix * Vector
+Vec3 Mat3::operator*(const Vec3& v) const {
+	return Vec3{
+		rows[0].x*v.x + rows[0].y*v.y + rows[0].z*v.z,
+		rows[1].x*v.x + rows[1].y*v.y + rows[1].z*v.z,
+		rows[2].x*v.x + rows[2].y*v.y + rows[2].z*v.z
+	};
+}
+
+// Matrix * Matrix
+Mat3 Mat3::operator*(const Mat3& o) const {
+	// Need columns of `o` as Vec3s to dot against
+	Vec3 col0{o.rows[0].x, o.rows[1].x, o.rows[2].x};
+	Vec3 col1{o.rows[0].y, o.rows[1].y, o.rows[2].y};
+	Vec3 col2{o.rows[0].z, o.rows[1].z, o.rows[2].z};
+
+	Mat3 r;
+	for (int i = 0; i < 3; ++i) {
+		const Vec3& row = rows[i];
+		r.rows[i] = Vec3{
+		row.x*col0.x + row.y*col0.y + row.z*col0.z,
+		row.x*col1.x + row.y*col1.y + row.z*col1.z,
+		row.x*col2.x + row.y*col2.y + row.z*col2.z
+		};
+	}
+	return r;
+}
+
+#pragma endregion
+
 #pragma region Leg
 
 /**
@@ -154,9 +187,6 @@ float map_float(float value, float from_low, float from_high, float to_low, floa
 /**
  * @brief Converts a servo angle in degrees to a PWM pulse value.
  *
- * Clamps the input angle to the valid [0, 180] degree range, then maps
- * it linearly to the servo's configured min/max pulse values.
- *
  * @param angle Desired servo angle in degrees.
  * @return uint16_t Corresponding PWM pulse value.
  */
@@ -168,10 +198,6 @@ uint16_t angle_to_pulse(float angle) {
 /**
  * @brief Determines whether two legs are adjacent (diagonally opposite pairing check).
  *
- * Checks the parity relationship between the reference leg index and
- * the candidate leg index to determine adjacency in the leg numbering
- * scheme.
- *
  * @param ref_leg_idx Index of the reference leg.
  * @param leg_idx Index of the leg being checked.
  * @return bool True if the legs are considered adjacent, false otherwise.
@@ -182,10 +208,6 @@ bool is_adjacent_leg(int ref_leg_idx, int leg_idx) {
 
 /**
  * @brief Determines whether two legs are diagonally opposite each other.
- *
- * A leg is considered "opposite" the reference leg if it is a different
- * leg but shares the same index parity (same side of the diagonal
- * gait pairing).
  *
  * @param ref_leg_idx Index of the reference leg.
  * @param leg_idx Index of the leg being checked.

@@ -45,7 +45,7 @@ Leg::Leg(int id) : info(id) {
 Theta3 Leg::get_inverted_angles(Theta3 out_angles) {
 	out_angles.coxa = 180.0f - out_angles.coxa;
 	out_angles.femur = 180.0f - out_angles.femur;
-	// out_angles.tibia = 180.0f - out_angles.tibia;
+	out_angles.tibia = 180.0f - out_angles.tibia;
 
 	return out_angles;
 }
@@ -110,7 +110,7 @@ void Leg::move_leg() {
 	// flip angles cuz servos on left leg flipped
 	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
 	
-	printf("Leg %d |	coxa: %f, femur: %f, theta3 %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
+	printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// move servos
 	pca9685_set_pwm_value(&Base::pca, this->info.id * 3,     angle_to_pulse(target_angles.coxa));

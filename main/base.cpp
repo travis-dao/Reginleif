@@ -71,8 +71,8 @@ void Base::init_legs() {
  */
 void Base::calibrate_servos() {
 	pca9685_set_pwm_value(&pca, 3, angle_to_pulse(90)); // coxa
-	pca9685_set_pwm_value(&pca, 4, angle_to_pulse(45)); // femur
-	pca9685_set_pwm_value(&pca, 5, angle_to_pulse(0)); // tibia
+	pca9685_set_pwm_value(&pca, 4, angle_to_pulse(0)); // femur
+	pca9685_set_pwm_value(&pca, 5, angle_to_pulse(180)); // tibia
 }
 
 void Base::drive_servo(float dt_s, float idx, float min, float max) {

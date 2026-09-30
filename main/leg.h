@@ -80,6 +80,8 @@ class Leg {
 		void update_stance();
 		void update_orientation();
 
+		void apply_pid_stabilization();
+
 	public:
 		Leg(int id);
 		void update();

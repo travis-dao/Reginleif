@@ -142,20 +142,11 @@ void Leg::update_orientation() {
 	this->target_pos.z = base_neutral_pos.z + this->orientation_offset;
 }
 
-
-// PID Controller
-
-// PID implementation
-// if (delta_t > 0) {
-// 	const Vec3 imu_angles = get_imu_angles();
-// 	const Mat3 rot_mat = get_rotation_matrix(delta_t, imu_angles, K_p, K_i, K_d);
-
-// 	for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
-// 		if (!leg_state.is_leg_airborne[leg_idx]) {
-// 		target[leg_idx] = rot_mat * target[leg_idx];
-// 		}
-// 	}
-// }
+void Leg::apply_pid_stabilization() {
+	if (base.get_dt_s() > 0 && state != LegState::SWING) {
+		this->target_pos = base.get_rot_matrix() * this->target_pos;
+	}
+}
 
 
 /**
@@ -200,6 +191,7 @@ void Leg::update_swing(const float step_length, const float step_height) {
 void Leg::update() {
 	// 1. update orientation offset and target_pos.z based on body's orientation
 	update_orientation();
+	// apply_pid_stabilization();
 
 	// 2. update target pos based on state
 	if (this->state == SWING) {

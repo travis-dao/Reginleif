@@ -92,6 +92,9 @@ class Base {
 		Vec3 get_target_orientation() {
 			return this->target_orientation;
 		}
+		Mat3 get_rot_matrix() {
+			return this->rot_mat;
+		}
 };
 
 extern Base base;

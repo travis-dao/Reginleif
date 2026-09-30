@@ -262,6 +262,10 @@ void Base::update(float dt_s) {
 	update_speed();
 	// update_orientation();
 
+	if (base.get_dt_s() > 0) {
+		// update_rot_matrix(dt_s);
+	}
+
 	move();
 
 	update_legs();

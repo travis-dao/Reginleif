@@ -257,7 +257,7 @@ void Base::update_speed() {
 void Base::update(float dt_s) {
 	this->dt_s = dt_s;
 
-	input_controller(Vec3 {1.0f, 0.0f, 0.0f});
+	input_controller(Vec3 {0.0f, 0.0f, 0.0f});
 
 	update_speed();
 	// update_orientation();

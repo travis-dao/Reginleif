@@ -18,10 +18,10 @@ namespace NeutralConfig {
 	constexpr Vec3 neutral_offset = { 90.0f, 100.0f, -50.0f };
 
 	const Vec3 neutral_vector[4] = { 
-		{ 1, 1, 1},  // Front Left
-		{ 1, -1, 1},   // Front Right
-		{ -1, -1, 1},  // Back Right
-		{ -1, 1, 1}, // Back Left
+		{ 1, 1, 1 },  // Front Left
+		{ 1, -1, 1 },   // Front Right
+		{ -1, -1, 1 },  // Back Right
+		{ -1, 1, 1 }, // Back Left
 	};
 }
 
@@ -65,9 +65,11 @@ class Leg {
 		Vec3 last_grounded_pos;
 		Vec3 base_neutral_pos;
 		Vec3 true_neutral_pos;
+		
 		float orientation_offset;
 		Theta3 angles;
 		float phase;
+
 		Info info;
 		LegState state;
 
@@ -81,6 +83,7 @@ class Leg {
 		void update_orientation();
 
 		void apply_pid_stabilization();
+		void balance(const Vec3& angles);
 
 	public:
 		Leg(int id);

@@ -189,8 +189,10 @@ void Leg::update_swing(const float step_length, const float step_height) {
  * @brief Runs one full per-leg update cycle.
  */
 void Leg::update() {
+	const Vec3 imu_angles = base.get_imu_angles();
+
 	// 1. update orientation offset and target_pos.z based on body's orientation
-	update_orientation();
+	// update_orientation();
 	// apply_pid_stabilization();
 
 	// 2. update target pos based on state
@@ -204,6 +206,7 @@ void Leg::update() {
 		update_stance();
 	} else {
 		this->target_pos = this->base_neutral_pos; // TODO: CHANGE LATER
+		balance(imu_angles);
 	}
 
 	// 3. while grounded, update pos to calculate proper step length
@@ -213,4 +216,21 @@ void Leg::update() {
 
 	// 4. move servos based on target pos
 	move_leg();
+}
+
+void Leg::balance(const Vec3& angles) {
+	if (state == SWING) return;
+
+	float A = -tan(angles.y * M_PI / 180);
+	float B = tan(angles.x * M_PI / 180);
+
+	float offset = -(A * true_neutral_pos.x + B * true_neutral_pos.y);
+
+	// difference between target z pos and current z pos
+	float offset_delta = fabsf((NeutralConfig::neutral_offset.z + offset) - curr_pos.z);
+
+	// only move leg if change is substantial
+	if (offset_delta > 1) {
+		target_pos = base_neutral_pos + Vec3 { 0, 0, offset };
+	}
 }

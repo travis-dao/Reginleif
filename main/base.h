@@ -46,28 +46,84 @@ class Base {
 		complimentary_angle_t imu_angle = { 0.0f, 0.0f };
 		Mat3 rot_mat;
 
+		/**
+		* @brief Initializes the I2C bus and PCA9685 PWM/servo driver.
+		*/
 		void init_servo_driver();
+
+		/**
+		* @brief Allocates and initializes all four robot legs.
+		*/
 		void init_legs();
+
+		/**
+		* @brief Initializes and configures the MPU6050 IMU sensor.
+		*/
 		void init_imu();
+
+		/**
+		* @brief Sends initial calibration pulses to a single set of servo channels.
+		*/
 		void calibrate_servos();
 
+		/**
+		* @brief Updates movement state based on user/controller input.
+		*
+		* @param input The desired movement direction/magnitude vector.
+		*/
 		void input_controller(Vec3 input);
 
+		/**
+		* @brief Updates the internal state of all four legs.
+		*/
 		void update_legs();
+
+		/**
+		* @brief Reads sensor data from the IMU and updates the current orientation.
+		*/
 		void update_imu();
+
+		/**
+		* @brief Smoothly updates the current movement speed toward a target speed.
+		*/
 		void update_speed();
-		void update_velocity();
+
+		/**
+		* @brief Computes a target body orientation based on the currently airborne leg.
+		*/
 		void update_orientation();
+
+		/**
+		* @brief Calculates and updates rotation matrix for PID controller
+		*/
 		void update_rot_matrix(float delta_t);
 
+		/**
+		* @brief Advances the walking gait by selecting and moving the next leg.
+		*/
 		void move();
 
 	public:
 		static i2c_dev_t pca;
 		static mpu6050_handle_t mpu;
 		
+
+		/**
+		* @brief Constructs a Base object with default/neutral state.
+		*/
 		Base();
+
+		/**
+		* @brief Performs full hardware and subsystem initialization for the robot base.
+		*/
 		void init();
+
+
+		/**
+		* @brief Runs one full update cycle for the robot base.
+		*
+		* @param dt_s Elapsed time in seconds since the last update call.
+		*/
 		void update(float dt_s);
 		
 		void drive_servo(float dt_s, float idx, float min, float max);
@@ -87,6 +143,14 @@ class Base {
 		int get_current_airborne_leg() {
 			return this->current_airborne_leg;
 		}
+
+
+		/**
+		* @brief Retrieves the current IMU-derived orientation angles.
+		*
+		* @return Vec3 containing roll and pitch from the filtered IMU angle
+		*         data, with the z component unused (set to 0).
+		*/
 		Vec3 get_imu_angles();
 
 		Vec3 get_target_orientation() {

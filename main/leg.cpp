@@ -7,22 +7,12 @@
 #include "helpers.h"
 #include "base.h"
 
-/**
- * @brief Constructs an Info struct describing a leg's identity and position on the body.
- *
- * @param id Numeric identifier of the leg (0–3).
- */
 Info::Info(int id) {
 	this->id = id;
 	this->is_front_leg = id == 0 || id == 1;
 	this->is_right_leg = id == 1 || id == 2;
 }
 
-/**
- * @brief Constructs a Leg object and initializes its neutral position and state.
- *
- * @param id Numeric identifier of the leg (0–3), passed through to Info.
- */
 Leg::Leg(int id) : info(id) {
 	this->orientation_offset = 0.0f;
 	this->base_neutral_pos = NeutralConfig::neutral_vector[id] * NeutralConfig::neutral_offset;
@@ -36,12 +26,6 @@ Leg::Leg(int id) : info(id) {
 	move_leg();
 }
 
-/**
- * @brief Inverts joint angles for legs with reverse-mounted servos (left side).
- *
- * @param out_angles The originally computed coxa/femur/tibia angles.
- * @return Theta3 The inverted angles suitable for reverse-mounted servos.
- */
 Theta3 Leg::get_inverted_angles(Theta3 out_angles) {
 	out_angles.coxa = 180.0f - out_angles.coxa;
 	out_angles.femur = 180.0f - out_angles.femur;
@@ -50,26 +34,18 @@ Theta3 Leg::get_inverted_angles(Theta3 out_angles) {
 	return out_angles;
 }
 
-/**
- * @brief Computes inverse kinematics joint angles for a target foot position.
- *
- * @param x Target x-coordinate of the foot.
- * @param y Target y-coordinate of the foot.
- * @param z Target z-coordinate of the foot.
- * @return Theta3 The computed coxa, femur, and tibia joint angles (degrees).
- */
-Theta3 Leg::ik(float x, float y, float z) {
+Theta3 Leg::ik(Vec3 target_foot_pos) {
 	Theta3 new_angles;
 
 	// dis to target pos on x-y plane
-	float d = sqrt(x * x + y * y);
+	float d = sqrt(target_foot_pos.x * target_foot_pos.x + target_foot_pos.y * target_foot_pos.y);
 
 	// adjust dis for offset to where coxa servo connects femur servo
 	float r = d - LegConfig::body_to_coxa_x_offset;
 
 	// dis to target pos on x-z plane, basically dis from femur servo to tip of tibia
-	z += LegConfig::body_to_coxa_z_offset;
-	float c = sqrt(z * z + r * r);
+	target_foot_pos.z += LegConfig::body_to_coxa_z_offset;
+	float c = sqrt(target_foot_pos.z * target_foot_pos.z + r * r);
 
 	float c_squared = c * c;
 	float a_squared = LegConfig::femur_length * LegConfig::femur_length;
@@ -90,22 +66,19 @@ Theta3 Leg::ik(float x, float y, float z) {
 	);
 
 	// update output
-	new_angles.coxa = atan2(y, x) * 180.0f / M_PI; // coxa
-	new_angles.femur = atan2(r, -z) * 180.0f / M_PI + acos(cos2) * 180.0f / M_PI; // femur
+	new_angles.coxa = atan2(target_foot_pos.y, target_foot_pos.x) * 180.0f / M_PI; // coxa
+	new_angles.femur = atan2(r, -target_foot_pos.z) * 180.0f / M_PI + acos(cos2) * 180.0f / M_PI; // femur
 	new_angles.tibia = acos(cos3) * 180.0f / M_PI; // tibia
 
 	return new_angles;
 }
 
-/**
- * @brief Converts the leg's target position into servo angles and drives the servos.
- */
 void Leg::move_leg() {
-	Vec3 adjusted = this->target_pos;
+	Vec3 adjusted_target_pos = this->target_pos;
 
-	adjusted.y *= this->info.is_right_leg ? -1 : 1;
+	adjusted_target_pos.y *= this->info.is_right_leg ? -1 : 1;
 
-	Theta3 target_angles = ik(adjusted.x, adjusted.y, adjusted.z);
+	Theta3 target_angles = ik(adjusted_target_pos);
 
 	// flip angles cuz servos on left leg flipped
 	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
@@ -122,11 +95,6 @@ void Leg::move_leg() {
 	this->curr_pos = this->target_pos;
 }
 
-/**
- * @brief Adjusts the leg's target height to compensate for body orientation.
- *
- * @note PID controller migration/tuning is still pending.
- */
 void Leg::update_orientation() {
 	Vec3 target_orientation = base.get_target_orientation();
 
@@ -148,10 +116,6 @@ void Leg::apply_pid_stabilization() {
 	}
 }
 
-
-/**
- * @brief Updates the leg's target position while in the STANCE state.
- */
 void Leg::update_stance() {
 	// reset phase for swing state
 	this->phase = 0.0f;
@@ -160,12 +124,6 @@ void Leg::update_stance() {
 	target_pos.x += base.get_speed() * base.get_dt_s() * -1;
 }
 
-/**
- * @brief Updates the leg's target position while in the SWING state.
- *
- * @param step_length Horizontal distance the foot should travel during the swing.
- * @param step_height Maximum vertical lift height during the swing arc.
- */
 void Leg::update_swing(const float step_length, const float step_height) {
 	// swing done -> move to stance phase
 	if (this->phase >= 1.0f) {
@@ -185,9 +143,6 @@ void Leg::update_swing(const float step_length, const float step_height) {
 	if (this->phase > 1.0f) this->phase = 1.0f;
 }
 
-/**
- * @brief Runs one full per-leg update cycle.
- */
 void Leg::update() {
 	const Vec3 imu_angles = base.get_imu_angles();
 
@@ -205,7 +160,7 @@ void Leg::update() {
 	} else if (this->state == STANCE) {
 		update_stance();
 	} else {
-		this->target_pos = this->base_neutral_pos; // TODO: CHANGE LATER
+		// this->target_pos = this->base_neutral_pos; // TODO: CHANGE LATER
 		balance(imu_angles);
 	}
 

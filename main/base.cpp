@@ -11,16 +11,13 @@
 #include "base.h"
 
 constexpr uint16_t MPU6050_I2C_ADDR = 0x68;
-constexpr uint16_t PCA9685_I2C_ADDR = PCA9685_ADDR_BASE; // 0x40
+constexpr uint16_t PCA9685_I2C_ADDR = 0x40;
 
 i2c_dev_t Base::pca = { };
 mpu6050_handle_t Base::mpu = nullptr;
 
 float SPEED_LERP_RATE = 4.0f;
 
-/**
- * @brief Constructs a Base object with default/neutral state.
- */
 Base::Base() {
 	this->velocity = Vec3 {0.0f, 0.0f, 0.0f};
 	this->current_airborne_leg = -1;
@@ -29,20 +26,14 @@ Base::Base() {
 	this->target_orientation = Vec3 { 0.0f, 0.0f, 0.0f };
 }
 
-/**
- * @brief Performs full hardware and subsystem initialization for the robot base.
- */
 void Base::init() {
 	printf("Reginleif Initialization Sequence...\n");
 	init_servo_driver();
 	init_legs();
-	calibrate_servos();
-	// init_imu();
+	// calibrate_servos();
+	init_imu();
 }
 
-/**
- * @brief Initializes the I2C bus and PCA9685 PWM/servo driver.
- */
 void Base::init_servo_driver() {
 	ESP_ERROR_CHECK(i2cdev_init());
 	memset(&pca, 0, sizeof(i2c_dev_t));
@@ -54,9 +45,6 @@ void Base::init_servo_driver() {
 	ThisThread::sleep_for(1000ms);
 }
 
-/**
- * @brief Allocates and initializes all four robot legs.
- */
 void Base::init_legs() {
 	for (int i = 0; i < 4; i++) {
 		this->legs[i] = new Leg(i);
@@ -66,13 +54,15 @@ void Base::init_legs() {
 	ThisThread::sleep_for(1000ms);
 }
 
-/**
- * @brief Sends initial calibration pulses to a single set of servo channels.
- */
 void Base::calibrate_servos() {
-	pca9685_set_pwm_value(&pca, 3, angle_to_pulse(90)); // coxa
-	pca9685_set_pwm_value(&pca, 4, angle_to_pulse(0)); // femur
-	pca9685_set_pwm_value(&pca, 5, angle_to_pulse(180)); // tibia
+	// pca9685_set_pwm_value(&pca, 3, angle_to_pulse(90)); // coxa
+	// pca9685_set_pwm_value(&pca, 4, angle_to_pulse(0)); // femur
+	// pca9685_set_pwm_value(&pca, 5, angle_to_pulse(180)); // tibia
+
+	for (int i = 0; i < 4; i++) {
+		pca9685_set_pwm_value(&pca, i * 3, angle_to_pulse(90)); // coxa
+	}
+
 }
 
 void Base::drive_servo(float dt_s, float idx, float min, float max) {
@@ -122,9 +112,6 @@ void Base::drive_servo(float dt_s, float idx, float min, float max) {
     pca9685_set_pwm_value(&pca, 3, angle_to_pulse(cur));
 }
 
-/**
- * @brief Initializes and configures the MPU6050 IMU sensor.
- */
 void Base::init_imu() {
 	mpu = mpu6050_create(I2C_PORT, MPU6050_I2C_ADDR);
 
@@ -148,18 +135,12 @@ void Base::init_imu() {
 	ThisThread::sleep_for(1000ms);
 }
 
-/**
- * @brief Updates the internal state of all four legs.
- */
 void Base::update_legs() {
 	for (int i = 0; i < 4; i++) {
 		legs[i]->update();
 	}
 }
 
-/**
- * @brief Reads sensor data from the IMU and updates the current orientation.
- */
 void Base::update_imu() {
 	mpu6050_acce_value_t acce;
 	mpu6050_gyro_value_t gyro;
@@ -180,9 +161,6 @@ void Base::update_imu() {
 	this->current_orientation = get_imu_angles();
 }
 
-/**
- * @brief Advances the walking gait by selecting and moving the next leg.
- */
 void Base::move() {
 	if (state == REST) {
 		return;
@@ -203,11 +181,6 @@ void Base::move() {
 	}
 }
 
-/**
- * @brief Updates movement state based on user/controller input.
- *
- * @param input The desired movement direction/magnitude vector.
- */
 void Base::input_controller(Vec3 input) {
 	this->input = input;
 
@@ -218,9 +191,6 @@ void Base::input_controller(Vec3 input) {
 	}
 }
 
-/**
- * @brief Smoothly updates the current movement speed toward a target speed.
- */
 void Base::update_speed() {
 	float target_speed;
 
@@ -249,11 +219,6 @@ void Base::update_speed() {
 	}
 }
 
-/**
- * @brief Runs one full update cycle for the robot base.
- *
- * @param dt_s Elapsed time in seconds since the last update call.
- */
 void Base::update(float dt_s) {
 	this->dt_s = dt_s;
 
@@ -271,9 +236,6 @@ void Base::update(float dt_s) {
 	update_legs();
 }
 
-/**
- * @brief Computes a target body orientation based on the currently airborne leg.
- */
 void Base::update_orientation() {
 	float a = 10.0f;
 
@@ -301,10 +263,6 @@ void Base::update_orientation() {
 	}
 }
 
-
-/**
- * @brief Calculates and updates rotation matrix for PID controller
- */
 void Base::update_rot_matrix(float delta_t) {
   const static Vec3 ref_angles { 0, 0, 0 };
 
@@ -355,12 +313,6 @@ void Base::update_rot_matrix(float delta_t) {
   this->rot_mat = rotation_matrix;
 }
 
-/**
- * @brief Retrieves the current IMU-derived orientation angles.
- *
- * @return Vec3 containing roll and pitch from the filtered IMU angle
- *         data, with the z component unused (set to 0).
- */
 Vec3 Base::get_imu_angles() {
 	return Vec3 {imu_angle.roll, imu_angle.pitch, 0.0f};
 }

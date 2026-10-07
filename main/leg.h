@@ -55,6 +55,12 @@ struct Info {
 	bool is_front_leg;
 	bool is_right_leg;
 
+
+	/**
+	* @brief Constructs an Info struct describing a leg's identity and position on the body.
+	*
+	* @param id Numeric identifier of the leg (0–3).
+	*/
 	Info(int id);
 };
 
@@ -73,26 +79,70 @@ class Leg {
 		Info info;
 		LegState state;
 
-		Theta3 ik(float x, float y, float z);
+		/**
+		* @brief Computes inverse kinematics joint angles for a target foot position.
+		*
+		* @param target_foot_pos Vec3 The target food position (tip of the leg) with respect to the relative position of the leg
+		* @return Theta3 The computed coxa, femur, and tibia joint angles (degrees).
+		*/
+		Theta3 ik(Vec3 target_foot_pos);
+
+		/**
+		* @brief Inverts joint angles for legs with reverse-mounted servos (left side).
+		*
+		* @param out_angles The originally computed coxa/femur/tibia angles.
+		* @return Theta3 The inverted angles suitable for reverse-mounted servos.
+		*/
 		static Theta3 get_inverted_angles(Theta3 angles);
 
+		/**
+		* @brief Converts the leg's target position into servo angles and drives the servos.
+		*/
 		void move_leg();
 
+		/**
+		* @brief Updates the leg's target position while in the SWING state.
+		*
+		* @param step_length Horizontal distance the foot should travel during the swing.
+		* @param step_height Maximum vertical lift height during the swing arc.
+		*/
 		void update_swing(const float step_length, const float step_height);
+
+		/**
+		* @brief Updates the leg's target position while in the STANCE state.
+		*/
 		void update_stance();
+
+		/**
+		* @brief Adjusts the leg's target height to compensate for body orientation.
+		*
+		* @note PID controller migration/tuning is still pending.
+		*/
 		void update_orientation();
 
 		void apply_pid_stabilization();
 		void balance(const Vec3& angles);
 
 	public:
+		/**
+		* @brief Constructs a Leg object and initializes its neutral position and state.
+		*
+		* @param id Numeric identifier of the leg (0–3), passed through to Info.
+		*/
 		Leg(int id);
+
+		/**
+		* @brief Runs one full per-leg update cycle.
+		*/
 		void update();
 
 		void update_state(const LegState state) {
 			this->state = state;
 		}
-		
+
+		/**
+		* @brief Checks if leg is ground, or when leg is not in swing state.
+		*/
 		bool is_grounded() {
 			return state != SWING;
 		}

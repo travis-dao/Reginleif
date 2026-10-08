@@ -3,13 +3,16 @@
 
 #include "helpers.h"
 #include "leg.h"
-#include <pca9685.h>
+#include "pca9685.h"
+// #include <pca9685.h>
 #include <mpu6050.h>
 
 // I2C config
-constexpr i2c_port_t I2C_PORT = I2C_NUM_0;
-constexpr gpio_num_t SDA_GPIO = GPIO_NUM_3;
-constexpr gpio_num_t SCL_GPIO = GPIO_NUM_4;
+namespace I2C_Config {
+	constexpr i2c_port_t I2C_PORT = I2C_NUM_0;
+	constexpr gpio_num_t SDA_GPIO = GPIO_NUM_3;
+	constexpr gpio_num_t SCL_GPIO = GPIO_NUM_4;
+}
 
 namespace ServoConfig {
 	constexpr float SERVO_FREQ = 50.0f;
@@ -25,7 +28,7 @@ constexpr int next_leg_gait[5] = {
 	/*  3 -> */ 0,
 };
 
-constexpr Vec3 body_offset = { 42.0f, 66.7f, 0.0f };
+constexpr Vec3 body_offset = { 33.72f, 43.13f, 0.0f };
 
 enum MoveState {
 	REST, WALK, RUN, TURN
@@ -43,8 +46,12 @@ class Base {
 		MoveState state;
 		Vec3 input;
 
-		complimentary_angle_t imu_angle = { 0.0f, 0.0f };
 		Mat3 rot_mat;
+
+    	i2c_master_bus_handle_t bus;
+		mpu6050_angles_t angles;
+
+		void init_i2c();
 
 		/**
 		* @brief Initializes the I2C bus and PCA9685 PWM/servo driver.
@@ -104,7 +111,7 @@ class Base {
 		void move();
 
 	public:
-		static i2c_dev_t pca;
+		static pca9685_handle_t pca;
 		static mpu6050_handle_t mpu;
 		
 

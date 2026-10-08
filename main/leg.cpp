@@ -83,12 +83,12 @@ void Leg::move_leg() {
 	// flip angles cuz servos on left leg flipped
 	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
 	
-	printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
+	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// move servos
-	pca9685_set_pwm_value(&Base::pca, this->info.id * 3,     angle_to_pulse(target_angles.coxa));
-	pca9685_set_pwm_value(&Base::pca, this->info.id * 3 + 1, angle_to_pulse(target_angles.femur));
-	pca9685_set_pwm_value(&Base::pca, this->info.id * 3 + 2, angle_to_pulse(target_angles.tibia));
+	servo_set_angle(Base::pca, this->info.id * 3, target_angles.coxa);
+	servo_set_angle(Base::pca, this->info.id * 3 + 1, target_angles.femur);
+	servo_set_angle(Base::pca, this->info.id * 3 + 2, target_angles.tibia);
 
 	// update members
 	this->angles = target_angles;

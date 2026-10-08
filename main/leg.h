@@ -4,10 +4,10 @@
 #include "helpers.h"
 
 namespace LegConfig {
-	constexpr float femur_length = 89.806f;
-	constexpr float tibia_length = 141.701f;
-	constexpr float body_to_coxa_x_offset = 45.125f;
-	constexpr float body_to_coxa_z_offset = -10.0f;
+	constexpr float femur_length = 122.64f;
+	constexpr float tibia_length = 34.66f + 147.03f;
+	constexpr float body_to_coxa_x_offset = 28.58f;
+	constexpr float body_to_coxa_z_offset = -9.72f;
 }
 
 struct Theta3 {

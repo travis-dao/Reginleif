@@ -3,17 +3,15 @@
 #include <math.h>
 #include <algorithm>
 
-#include <pca9685.h>
+#include "driver/i2c_master.h"
 #include <mpu6050.h>
+#include <pca9685.h>
 
 #include "leg.h"
 #include "helpers.h"
 #include "base.h"
 
-constexpr uint16_t MPU6050_I2C_ADDR = 0x68;
-constexpr uint16_t PCA9685_I2C_ADDR = 0x40;
-
-i2c_dev_t Base::pca = { };
+pca9685_handle_t Base::pca = nullptr;
 mpu6050_handle_t Base::mpu = nullptr;
 
 float SPEED_LERP_RATE = 4.0f;
@@ -28,18 +26,33 @@ Base::Base() {
 
 void Base::init() {
 	printf("Reginleif Initialization Sequence...\n");
+	init_i2c();
+
 	init_servo_driver();
 	init_legs();
 	// calibrate_servos();
+
 	init_imu();
 }
 
+void Base::init_i2c() {
+    i2c_master_bus_config_t bus_cfg = {};
+    bus_cfg.i2c_port          = I2C_Config::I2C_PORT;
+    bus_cfg.sda_io_num        = I2C_Config::SDA_GPIO;
+    bus_cfg.scl_io_num        = I2C_Config::SCL_GPIO;
+    bus_cfg.clk_source        = I2C_CLK_SRC_DEFAULT;
+    bus_cfg.glitch_ignore_cnt = 7;
+    bus_cfg.flags.enable_internal_pullup = true;
+    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_cfg, &bus));
+}
+
 void Base::init_servo_driver() {
-	ESP_ERROR_CHECK(i2cdev_init());
-	memset(&pca, 0, sizeof(i2c_dev_t));
-	ESP_ERROR_CHECK(pca9685_init_desc(&pca, PCA9685_I2C_ADDR, I2C_PORT, SDA_GPIO, SCL_GPIO));
-	ESP_ERROR_CHECK(pca9685_init(&pca));
-	ESP_ERROR_CHECK(pca9685_set_pwm_frequency(&pca, ServoConfig::SERVO_FREQ));
+	pca9685_config_t cfg = {};
+    cfg.bus         = bus;
+    cfg.addr        = PCA9685_I2C_ADDR_DEFAULT;
+    cfg.pwm_freq_hz = ServoConfig::SERVO_FREQ;
+	cfg.bus = bus;
+    ESP_ERROR_CHECK(pca9685_new(&cfg, &this->pca));
 
 	printf("Servo driver set up.\n");
 	ThisThread::sleep_for(1000ms);
@@ -55,12 +68,14 @@ void Base::init_legs() {
 }
 
 void Base::calibrate_servos() {
-	// pca9685_set_pwm_value(&pca, 3, angle_to_pulse(90)); // coxa
-	// pca9685_set_pwm_value(&pca, 4, angle_to_pulse(0)); // femur
-	// pca9685_set_pwm_value(&pca, 5, angle_to_pulse(180)); // tibia
+	// Calibrate all servos on 1 leg
+	// servo_set_angle(this->pca, 3, 90); // coxa
+	// servo_set_angle(this->pca, 4, 0); // femur
+	// servo_set_angle(this->pca, 5, 180); // tibia
 
+	// Calibrate all servos of 1 leg section
 	for (int i = 0; i < 4; i++) {
-		pca9685_set_pwm_value(&pca, i * 3, angle_to_pulse(90)); // coxa
+		servo_set_angle(this->pca, i * 3, 90);
 	}
 
 }
@@ -109,25 +124,18 @@ void Base::drive_servo(float dt_s, float idx, float min, float max) {
             break;
     }
 
-    pca9685_set_pwm_value(&pca, 3, angle_to_pulse(cur));
+    servo_set_angle(this->pca, 3, cur);
 }
 
 void Base::init_imu() {
-	mpu = mpu6050_create(I2C_PORT, MPU6050_I2C_ADDR);
-
-	uint8_t device_id = 0;
-	esp_err_t ret = mpu6050_get_deviceid(mpu, &device_id);
-	while (ret != ESP_OK) {
-		printf("Unable to connect to MPU.\n");
-		ThisThread::sleep_for(500ms);
-		ret = mpu6050_get_deviceid(mpu, &device_id);
-	}
-
-	ESP_ERROR_CHECK(mpu6050_config(mpu, ACCE_FS_4G, GYRO_FS_500DPS));
-	ESP_ERROR_CHECK(mpu6050_wake_up(mpu));
+    mpu6050_config_t cfg = MPU6050_CONFIG_DEFAULT();
+    cfg.bus = bus;
+    ESP_ERROR_CHECK(mpu6050_init(&cfg, &this->mpu));
 
 	printf("Do not move IMU during startup.\n");
 	ThisThread::sleep_for(1000ms);
+
+    ESP_ERROR_CHECK(mpu6050_calibrate_gyro(this->mpu, 200));
 
 	this->current_orientation = get_imu_angles();
 
@@ -142,23 +150,10 @@ void Base::update_legs() {
 }
 
 void Base::update_imu() {
-	mpu6050_acce_value_t acce;
-	mpu6050_gyro_value_t gyro;
-
-	esp_err_t ret = mpu6050_get_acce(mpu, &acce);
-	if (ret != ESP_OK) {
-		printf("Failed to read accelerometer.\n");
+	if (mpu6050_get_angles(this->mpu, &this->angles) != ESP_OK) {
+		printf("Failed to read IMU");
 		return;
 	}
-
-	ret = mpu6050_get_gyro(mpu, &gyro);
-	if (ret != ESP_OK) {
-		printf("Failed to read gyroscope.\n");
-		return;
-	}
-
-	mpu6050_complimentory_filter(mpu, &acce, &gyro, &imu_angle);
-	this->current_orientation = get_imu_angles();
 }
 
 void Base::move() {
@@ -214,13 +209,14 @@ void Base::update_speed() {
 	this->current_speed = std::lerp(this->current_speed, target_speed, t);
 
 	// snap to zero to avoid tiny residual velocity keeping legs "moving"
-	if (fabs(this->current_speed) < 0.001f) {
+	if (fabsf(this->current_speed) < 0.001f) {
 		this->current_speed = 0.0f;
 	}
 }
 
 void Base::update(float dt_s) {
 	this->dt_s = dt_s;
+	update_imu();
 
 	input_controller(Vec3 {0.0f, 0.0f, 0.0f});
 
@@ -233,10 +229,13 @@ void Base::update(float dt_s) {
 
 	move();
 
-	update_legs();
+	// update_legs();
 }
 
 void Base::update_orientation() {
+	this->current_orientation = get_imu_angles();
+	return;
+
 	float a = 10.0f;
 
 	switch (this->current_airborne_leg) {
@@ -314,5 +313,5 @@ void Base::update_rot_matrix(float delta_t) {
 }
 
 Vec3 Base::get_imu_angles() {
-	return Vec3 {imu_angle.roll, imu_angle.pitch, 0.0f};
+	return Vec3 {-angles.roll, -angles.pitch, 0.0f};
 }

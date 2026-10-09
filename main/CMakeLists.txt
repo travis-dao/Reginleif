@@ -1,4 +1,4 @@
 idf_component_register(
-  SRCS "helpers.cpp" "leg.cpp" "main.cpp" "base.cpp" "leg.cpp"
+  SRCS "types.cpp" "helpers.cpp" "leg.cpp" "main.cpp" "base.cpp" "leg.cpp" "types.cpp"
   INCLUDE_DIRS "."
 )

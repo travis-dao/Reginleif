@@ -1,11 +1,12 @@
 #include <math.h>
 #include <algorithm>
 
-#include <mpu6050.h>
+#include "mpu6050.h"
 
 #include "leg.h"
 #include "helpers.h"
 #include "base.h"
+#include "config.h"
 
 Info::Info(int id) {
 	this->id = id;
@@ -15,13 +16,15 @@ Info::Info(int id) {
 
 Leg::Leg(int id) : info(id) {
 	this->orientation_offset = 0.0f;
-	this->base_neutral_pos = NeutralConfig::neutral_vector[id] * NeutralConfig::neutral_offset;
-	this->true_neutral_pos = NeutralConfig::neutral_vector[id] * (NeutralConfig::neutral_offset + body_offset);
-	this->last_grounded_pos = this->base_neutral_pos;
-	this->curr_pos = this->base_neutral_pos;
-	this->target_pos = this->base_neutral_pos;
+	this->pos_state = {
+		.base_neutral_pos = Config::Offset::neutral_vector[id] * Config::Offset::neutral_offset,
+		.true_neutral_pos = Config::Offset::neutral_vector[id] * (Config::Offset::neutral_offset + Config::Offset::body_offset),
+		.curr_pos = this->pos_state.base_neutral_pos,
+		.target_pos = this->pos_state.base_neutral_pos,
+		.last_grounded_pos = this->pos_state.base_neutral_pos,
+	};
 	this->phase = 0.0f;
-	this->state = HOLD;
+	this->leg_state = HOLD;
 
 	move_leg();
 }
@@ -34,6 +37,16 @@ Theta3 Leg::get_inverted_angles(Theta3 out_angles) {
 	return out_angles;
 }
 
+Theta3 Leg::clamp_to_limits(Theta3 angles) {
+	const LegServoLimits& lim = ServoConfig::limits[this->info.id];
+
+	return {
+		lim.coxa.clamp(angles.coxa),
+		lim.femur.clamp(angles.femur),
+		lim.tibia.clamp(angles.tibia)
+	};
+}
+
 Theta3 Leg::ik(Vec3 target_foot_pos) {
 	Theta3 new_angles;
 
@@ -41,26 +54,26 @@ Theta3 Leg::ik(Vec3 target_foot_pos) {
 	float d = sqrt(target_foot_pos.x * target_foot_pos.x + target_foot_pos.y * target_foot_pos.y);
 
 	// adjust dis for offset to where coxa servo connects femur servo
-	float r = d - LegConfig::body_to_coxa_x_offset;
+	float r = d - Config::Leg::body_to_coxa_x_offset;
 
 	// dis to target pos on x-z plane, basically dis from femur servo to tip of tibia
-	target_foot_pos.z += LegConfig::body_to_coxa_z_offset;
+	target_foot_pos.z += Config::Leg::body_to_coxa_z_offset;
 	float c = sqrt(target_foot_pos.z * target_foot_pos.z + r * r);
 
 	float c_squared = c * c;
-	float a_squared = LegConfig::femur_length * LegConfig::femur_length;
-	float b_squared = LegConfig::tibia_length * LegConfig::tibia_length;
+	float a_squared = Config::Leg::femur_length * Config::Leg::femur_length;
+	float b_squared = Config::Leg::tibia_length * Config::Leg::tibia_length;
 
 	// calculate femur servo
 	float cos2 = std::clamp(
-		(a_squared + c_squared - b_squared) / (2 * LegConfig::femur_length * c), 
+		(a_squared + c_squared - b_squared) / (2 * Config::Leg::femur_length * c), 
 		-1.0f, 
 		1.0f
 	);
 
 	// calculate tibia servo
 	float cos3 = std::clamp(
-		(a_squared + b_squared - c_squared) / (2 * LegConfig::femur_length * LegConfig::tibia_length), 
+		(a_squared + b_squared - c_squared) / (2 * Config::Leg::femur_length * Config::Leg::tibia_length), 
 		-1.0f, 
 		1.0f
 	);
@@ -74,25 +87,23 @@ Theta3 Leg::ik(Vec3 target_foot_pos) {
 }
 
 void Leg::move_leg() {
-	Vec3 adjusted_target_pos = this->target_pos;
-
+	Vec3 adjusted_target_pos = this->pos_state.target_pos;
 	adjusted_target_pos.y *= this->info.is_right_leg ? -1 : 1;
 
+	// check to flip angles for reverse mounted servos (leg side)
 	Theta3 target_angles = ik(adjusted_target_pos);
-
-	// flip angles cuz servos on left leg flipped
 	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
 	
-	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
+	printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// move servos
-	servo_set_angle(Base::pca, this->info.id * 3, target_angles.coxa);
-	servo_set_angle(Base::pca, this->info.id * 3 + 1, target_angles.femur);
-	servo_set_angle(Base::pca, this->info.id * 3 + 2, target_angles.tibia);
+	// servo_set_angle(Base::pca, this->info.id * 3, target_angles.coxa);
+	// servo_set_angle(Base::pca, this->info.id * 3 + 1, target_angles.femur);
+	// servo_set_angle(Base::pca, this->info.id * 3 + 2, target_angles.tibia);
 
 	// update members
 	this->angles = target_angles;
-	this->curr_pos = this->target_pos;
+	this->pos_state.curr_pos = this->pos_state.target_pos;
 }
 
 void Leg::update_orientation() {
@@ -101,18 +112,19 @@ void Leg::update_orientation() {
 	float A = -tan(target_orientation.y * M_PI / 180.0f);
 	float B = tan(target_orientation.x * M_PI / 180.0f);
 
-	this->orientation_offset = -(A * true_neutral_pos.x + B * true_neutral_pos.y);
+	this->orientation_offset = -(A * this->pos_state.true_neutral_pos.x + B * this->pos_state.true_neutral_pos.y);
 
 	// if (this->state == SWING) {
 	// 	this->orientation_offset = 0.0f;
 	// }
 
-	this->target_pos.z = base_neutral_pos.z + this->orientation_offset;
+	this->pos_state.target_pos.z = this->pos_state.base_neutral_pos.z + this->orientation_offset;
 }
 
 void Leg::apply_pid_stabilization() {
-	if (base.get_dt_s() > 0 && state != LegState::SWING) {
-		this->target_pos = base.get_rot_matrix() * this->target_pos;
+	// apply rot matrix to pos
+	if (base.get_dt_s() > 0 && leg_state != LegState::SWING) {
+		this->pos_state.target_pos = base.get_rot_matrix() * this->pos_state.target_pos;
 	}
 }
 
@@ -121,7 +133,7 @@ void Leg::update_stance() {
 	this->phase = 0.0f;
 
 	// move leg backwards at body's current speed
-	target_pos.x += base.get_speed() * base.get_dt_s() * -1;
+	this->pos_state.target_pos.x += base.get_speed() * base.get_dt_s() * -1;
 }
 
 void Leg::update_swing(const float step_length, const float step_height) {
@@ -132,14 +144,14 @@ void Leg::update_swing(const float step_length, const float step_height) {
 	}
 
 	// x = velocity-based
-	float velocity_x = (M_PI * step_length / (2.0f * MovementConfig::SWING_DURATION_S)) * sin(M_PI * this->phase);
-	this->target_pos.x += velocity_x * base.get_dt_s();
+	float velocity_x = (M_PI * step_length / (2.0f * Config::Movement::SWING_DURATION_S)) * sin(M_PI * this->phase);
+	this->pos_state.target_pos.x += velocity_x * base.get_dt_s();
 
 	// z = position-based, add on top of whatever update_orientation() just set
-	this->target_pos.z = this->base_neutral_pos.z + step_height * sin(M_PI * this->phase);
+	this->pos_state.target_pos.z = this->pos_state.base_neutral_pos.z + step_height * sin(M_PI * this->phase);
 
 	// advance phase
-	this->phase += base.get_dt_s() / MovementConfig::SWING_DURATION_S;
+	this->phase += base.get_dt_s() / Config::Movement::SWING_DURATION_S;
 	if (this->phase > 1.0f) this->phase = 1.0f;
 }
 
@@ -151,13 +163,13 @@ void Leg::update() {
 	// apply_pid_stabilization();
 
 	// 2. update target pos based on state
-	if (this->state == SWING) {
+	if (this->leg_state == SWING) {
 		// calc step length from where leg lifts
-		float target_pos_x = this->base_neutral_pos.x + (MovementConfig::MAX_STEP_LENGTH_MM / 2);
-		float adjusted_step_length = target_pos_x - last_grounded_pos.x;
+		float target_pos_x = this->pos_state.base_neutral_pos.x + (Config::Movement::MAX_STEP_LENGTH_MM / 2);
+		float adjusted_step_length = target_pos_x - this->pos_state.last_grounded_pos.x;
 
-		update_swing(adjusted_step_length, MovementConfig::STEP_HEIGHT_MM);
-	} else if (this->state == STANCE) {
+		update_swing(adjusted_step_length, Config::Movement::STEP_HEIGHT_MM);
+	} else if (this->leg_state == STANCE) {
 		update_stance();
 	} else {
 		// this->target_pos = this->base_neutral_pos; // TODO: CHANGE LATER
@@ -166,7 +178,7 @@ void Leg::update() {
 
 	// 3. while grounded, update pos to calculate proper step length
 	if (is_grounded()) {
-		this->last_grounded_pos = this->target_pos;
+		this->pos_state.last_grounded_pos = this->pos_state.target_pos;
 	}
 
 	// 4. move servos based on target pos
@@ -174,18 +186,19 @@ void Leg::update() {
 }
 
 void Leg::balance(const Vec3& angles) {
-	if (state == SWING) return;
+	if (this->leg_state == SWING) return;
 
+	// 3d plane method
 	float A = -tan(angles.y * M_PI / 180);
 	float B = tan(angles.x * M_PI / 180);
 
-	float offset = -(A * true_neutral_pos.x + B * true_neutral_pos.y);
+	float offset = -(A * this->pos_state.true_neutral_pos.x + B * this->pos_state.true_neutral_pos.y);
 
 	// difference between target z pos and current z pos
-	float offset_delta = fabsf((NeutralConfig::neutral_offset.z + offset) - curr_pos.z);
+	float offset_delta = fabsf((Config::Offset::neutral_offset.z + offset) - this->pos_state.curr_pos.z);
 
 	// only move leg if change is substantial
 	if (offset_delta > 1) {
-		target_pos = base_neutral_pos + Vec3 { 0, 0, offset };
+		this->pos_state.target_pos = this->pos_state.base_neutral_pos + Vec3 { 0, 0, offset };
 	}
 }

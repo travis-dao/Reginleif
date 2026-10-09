@@ -24,7 +24,9 @@ static const char *TAG = "mpu6050";
 #define PWR1_SLEEP         (1 << 6)
 #define PWR1_CLKSEL_PLL_X  0x01   /* PLL with X-axis gyro reference: more stable than the internal RC */
 
-#define WHO_AM_I_VALUE     0x68
+// #define WHO_AM_I_VALUE     0x68
+#define WHO_AM_I_MPU6050   0x68
+#define WHO_AM_I_MPU6500   0x70
 #define I2C_TIMEOUT_MS     100
 
 #define RAD2DEG            57.2957795f
@@ -42,6 +44,7 @@ struct mpu6050_dev {
     float gyro_lsb_per_dps;
     float gyro_bias[3];   /* deg/s */
     mpu6050_cf_t cf;      /* filter state for mpu6050_get_angles() */
+    float roll_off, pitch_off;   /* deg: attitude of the "zero" pose */
 };
 
 static const float ACCEL_SENS[] = { 16384.0f, 8192.0f, 4096.0f, 2048.0f };
@@ -69,6 +72,11 @@ static esp_err_t update_reg(mpu6050_handle_t dev, uint8_t reg, uint8_t mask, uin
     ESP_RETURN_ON_ERROR(mpu6050_read_regs(dev, reg, &cur, 1), TAG, "read reg 0x%02X", reg);
     cur = (cur & ~mask) | (val & mask);
     return mpu6050_write_reg(dev, reg, cur);
+}
+
+static bool who_am_i_ok(uint8_t who)
+{
+    return who == WHO_AM_I_MPU6050 || who == WHO_AM_I_MPU6500 || who == 0x72;
 }
 
 /* ---------- configuration ---------- */
@@ -143,11 +151,19 @@ esp_err_t mpu6050_init(const mpu6050_config_t *cfg, mpu6050_handle_t *out_handle
     uint8_t who = 0;
     ret = mpu6050_read_regs(dev, REG_WHO_AM_I, &who, 1);
     ESP_GOTO_ON_ERROR(ret, fail_rm, TAG, "WHO_AM_I read failed (check wiring/address)");
-    if (who != WHO_AM_I_VALUE) {
-        /* Some clones report 0x70/0x72 etc.; relax this check if you use one. */
-        ESP_LOGE(TAG, "unexpected WHO_AM_I 0x%02X (expected 0x%02X)", who, WHO_AM_I_VALUE);
+    // if (who != WHO_AM_I_VALUE) {
+    //     /* Some clones report 0x70/0x72 etc.; relax this check if you use one. */
+    //     ESP_LOGE(TAG, "unexpected WHO_AM_I 0x%02X (expected 0x%02X)", who, WHO_AM_I_VALUE);
+    //     ret = ESP_ERR_NOT_FOUND;
+    //     goto fail_rm;
+    // }
+    if (!who_am_i_ok(who)) {
+        ESP_LOGE(TAG, "unexpected WHO_AM_I 0x%02X", who);
         ret = ESP_ERR_NOT_FOUND;
         goto fail_rm;
+    }
+    if (who != WHO_AM_I_MPU6050) {
+        ESP_LOGW(TAG, "WHO_AM_I 0x%02X: not a genuine MPU6050, running in compatible mode", who);
     }
 
     /* Reset, then wake up with the gyro PLL as clock source */
@@ -255,6 +271,27 @@ esp_err_t mpu6050_calibrate_gyro(mpu6050_handle_t dev, uint16_t samples)
     return ESP_OK;
 }
 
+esp_err_t mpu6050_calibrate_level(mpu6050_handle_t dev, uint16_t samples)
+{
+    ESP_RETURN_ON_FALSE(dev && samples, ESP_ERR_INVALID_ARG, TAG, "bad args");
+
+    float sx = 0, sy = 0, sz = 0;
+    const TickType_t period = pdMS_TO_TICKS(1000 / (dev->sample_rate_hz ? dev->sample_rate_hz : 100)) + 1;
+
+    for (uint16_t i = 0; i < samples; i++) {
+        mpu6050_data_t d;
+        ESP_RETURN_ON_ERROR(mpu6050_read(dev, &d), TAG, "read");
+        sx += d.ax; sy += d.ay; sz += d.az;
+        vTaskDelay(period);
+    }
+    const float ax = sx / samples, ay = sy / samples, az = sz / samples;
+
+    dev->roll_off  = atan2f(ay, az) * RAD2DEG;
+    dev->pitch_off = atan2f(-ax, sqrtf(ay * ay + az * az)) * RAD2DEG;
+
+    return mpu6050_reset_angles(dev);   /* drop stale filter state */
+}
+
 /* ---------- complementary filter ---------- */
 
 void mpu6050_cf_init(mpu6050_cf_t *cf, float alpha)
@@ -328,8 +365,8 @@ esp_err_t mpu6050_get_angles(mpu6050_handle_t dev, mpu6050_angles_t *angles)
 {
     ESP_RETURN_ON_FALSE(dev && angles, ESP_ERR_INVALID_ARG, TAG, "bad args");
     ESP_RETURN_ON_ERROR(mpu6050_read_angles(dev, &dev->cf, NULL), TAG, "update angles");
-    angles->roll  = dev->cf.roll;
-    angles->pitch = dev->cf.pitch;
+    angles->roll  = dev->cf.roll  - dev->roll_off;
+    angles->pitch = dev->cf.pitch - dev->pitch_off;
     return ESP_OK;
 }
 

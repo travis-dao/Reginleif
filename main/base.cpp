@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "driver/i2c_master.h"
+#include "esp_log.h"
 #include "mpu6050.h"
 #include "pca9685.h"
 
@@ -22,25 +23,26 @@ Base::Base() {
 }
 
 void Base::init() {
-	printf("Beginning Initialization Sequence ..........\n");
+	printf("Initialization Sequence\n");
 	init_i2c();
 
 	// ping connected devices
-	for (uint8_t addr = 0x03; addr < 0x78; addr++) {
-		if (i2c_master_probe(this->bus, addr, 100) == ESP_OK) {
-			printf("Found device at 0x%02X\n", addr);
-		}
-	}
+	// for (uint8_t addr = 0x03; addr < 0x78; addr++) {
+	// 	if (i2c_master_probe(this->bus, addr, 100) == ESP_OK) {
+	// 		printf("Found device at 0x%02X\n", addr);
+	// 	}
+	// }
 
 	init_servo_driver();
 	init_legs();
 	// calibrate_servos();
 
-	// init_imu();
+	init_imu();
 }
 
 void Base::init_i2c() {
 	// init i2c bus
+	esp_log_level_set("gpio", ESP_LOG_WARN); // disable warnings
 	printf("Initializing I2C .......... ");
     i2c_master_bus_config_t bus_cfg = {};
     bus_cfg.i2c_port          = Config::I2C::I2C_PORT;
@@ -70,7 +72,7 @@ void Base::init_servo_driver() {
 
 void Base::init_legs() {
 	// instantiate legs
-	printf("Initializing Legs to neutral positions .......... ");
+	printf("Initializing legs to neutral positions .......... ");
 	for (int i = 0; i < 4; i++) {
 		this->legs[i] = new Leg(i);
 	}
@@ -94,10 +96,10 @@ void Base::calibrate_servos() {
 
 void Base::init_imu() {
 	// init imu and connect to master i2c bus
+	esp_log_level_set("mpu6050", ESP_LOG_ERROR);
 	printf("Initializing MPU6050 .......... ");
     mpu6050_config_t cfg = MPU6050_CONFIG_DEFAULT();
     cfg.bus = this->bus;
-	// cfg.addr = 0x69;
     ESP_ERROR_CHECK(mpu6050_init(&cfg, &this->mpu));
 	printf("Success\n");
 
@@ -106,6 +108,7 @@ void Base::init_imu() {
 	printf("Calibrating MPU6050 .......... ");
 
     ESP_ERROR_CHECK(mpu6050_calibrate_gyro(this->mpu, 200));
+    ESP_ERROR_CHECK(mpu6050_calibrate_level(this->mpu, 200));
 
 	this->current_orientation = get_imu_angles();
 
@@ -132,7 +135,7 @@ void Base::update_imu() {
 	this->current_orientation.y = -angles.pitch;
 	this->current_orientation.z = 0.0f;
 	
-	printf("Angles: roll: %.2f, pitch: %.2f", current_orientation.x, current_orientation.y);
+	printf("roll: %.2f | pitch: %.2f\n", current_orientation.x, current_orientation.y);
 }
 
 void Base::move() {
@@ -195,7 +198,7 @@ void Base::update_speed() {
 
 void Base::update(float dt_s) {
 	this->dt_s = dt_s;
-	// update_imu();
+	update_imu();
 
 	input_controller(Vec3 {0.0f, 0.0f, 0.0f});
 

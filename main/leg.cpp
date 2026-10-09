@@ -94,7 +94,7 @@ void Leg::move_leg() {
 	Theta3 target_angles = ik(adjusted_target_pos);
 	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
 	
-	printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
+	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// move servos
 	// servo_set_angle(Base::pca, this->info.id * 3, target_angles.coxa);

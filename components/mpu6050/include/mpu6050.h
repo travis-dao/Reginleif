@@ -114,6 +114,7 @@ esp_err_t mpu6050_sleep(mpu6050_handle_t dev, bool enable);
  *        The bias is then subtracted in mpu6050_read().
  */
 esp_err_t mpu6050_calibrate_gyro(mpu6050_handle_t dev, uint16_t samples);
+esp_err_t mpu6050_calibrate_level(mpu6050_handle_t dev, uint16_t samples);
 
 /* ---------- Complementary filter (roll / pitch) ---------- */
 

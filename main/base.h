@@ -26,6 +26,8 @@ class Base {
 		Mat3 rot_mat;
 
     	i2c_master_bus_handle_t bus;
+		pca9685_handle_t pca;
+		mpu6050_handle_t mpu;
 		mpu6050_angles_t angles;
 
 		void init_i2c();
@@ -47,9 +49,6 @@ class Base {
 		void move();
 
 	public:
-		static pca9685_handle_t pca;
-		static mpu6050_handle_t mpu;
-		
 		Base();
 		void init();
 		void update(float dt_s);

@@ -12,9 +12,6 @@
 #include "base.h"
 #include "config.h"
 
-pca9685_handle_t Base::pca = nullptr;
-mpu6050_handle_t Base::mpu = nullptr;
-
 float SPEED_LERP_RATE = 4.0f;
 
 Base::Base() {

@@ -1,7 +1,6 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
-#include <stdint.h>
 #include <thread>
 #include <chrono>
 
@@ -35,7 +34,5 @@ constexpr std::chrono::milliseconds operator""ms(unsigned long long ms) {
         static_cast<std::chrono::milliseconds::rep>(ms)
     };
 }
-
-esp_err_t servo_set_angle(pca9685_handle_t pca, uint8_t ch, float deg);
 
 #endif

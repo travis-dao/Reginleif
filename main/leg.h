@@ -2,6 +2,7 @@
 #define LEG_h
 
 #include "helpers.h"
+#include "pca9685.h"
 #include "types.h"
 
 enum LegState {
@@ -13,7 +14,11 @@ struct Info {
 	bool is_front_leg;
 	bool is_right_leg;
 
-	Info(int id);
+	Info(int id) {
+		this->id = id;
+		this->is_front_leg = id == 0 || id == 1;
+		this->is_right_leg = id == 1 || id == 2;
+	}
 };
 
 struct PositionState {
@@ -25,14 +30,28 @@ struct PositionState {
 };
 
 class Leg {
+	public:
+		struct config {
+			int id;
+			pca9685_handle_t pca;
+		};
+
+		Leg(config cfg);
+
+		void update();
+		void update_state(const LegState state) { this->leg_state = state; }
+
+		bool is_grounded() { return leg_state != SWING; }
+
 	private:
 		float orientation_offset;
 		Theta3 angles;
 		float phase;
 
-		Info info;
 		LegState leg_state;
 		PositionState pos_state;
+		Info info;
+		pca9685_handle_t pca;
 
 		Theta3 ik(Vec3 target_foot_pos);
 		Theta3 get_inverted_angles(Theta3 angles);
@@ -45,14 +64,6 @@ class Leg {
 
 		void apply_pid_stabilization();
 		void balance(const Vec3& angles);
-
-	public:
-		Leg(int id);
-
-		void update();
-		void update_state(const LegState state) { this->leg_state = state; }
-
-		bool is_grounded() { return leg_state != SWING; }
 };
 
 #endif

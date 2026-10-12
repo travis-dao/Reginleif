@@ -1,24 +1,16 @@
 #include <math.h>
-#include <algorithm>
-
-#include "mpu6050.h"
 
 #include "leg.h"
-#include "helpers.h"
-#include "base.h"
 #include "config.h"
 
-Info::Info(int id) {
-	this->id = id;
-	this->is_front_leg = id == 0 || id == 1;
-	this->is_right_leg = id == 1 || id == 2;
-}
-
-Leg::Leg(int id) : info(id) {
+Leg::Leg(config cfg): 
+	info(cfg.id), 
+	pca(cfg.pca) 
+{
 	this->orientation_offset = 0.0f;
 	this->pos_state = {
-		.base_neutral_pos = Config::Offset::neutral_vector[id] * Config::Offset::neutral_offset,
-		.true_neutral_pos = Config::Offset::neutral_vector[id] * (Config::Offset::neutral_offset + Config::Offset::body_offset),
+		.base_neutral_pos = Config::Offset::neutral_vector[cfg.id] * Config::Offset::neutral_offset,
+		.true_neutral_pos = Config::Offset::neutral_vector[cfg.id] * (Config::Offset::neutral_offset + Config::Offset::body_offset),
 		.curr_pos = this->pos_state.base_neutral_pos,
 		.target_pos = this->pos_state.base_neutral_pos,
 		.last_grounded_pos = this->pos_state.base_neutral_pos,
@@ -97,9 +89,9 @@ void Leg::move_leg() {
 	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// move servos
-	// servo_set_angle(Base::pca, this->info.id * 3, target_angles.coxa);
-	// servo_set_angle(Base::pca, this->info.id * 3 + 1, target_angles.femur);
-	// servo_set_angle(Base::pca, this->info.id * 3 + 2, target_angles.tibia);
+	servo_set_angle(this->pca, this->info.id * 3, target_angles.coxa);
+	servo_set_angle(this->pca, this->info.id * 3 + 1, target_angles.femur);
+	servo_set_angle(this->pca, this->info.id * 3 + 2, target_angles.tibia);
 
 	// update members
 	this->angles = target_angles;

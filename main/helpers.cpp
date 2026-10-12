@@ -1,12 +1,6 @@
-#include <math.h>
-#include <algorithm>
 #include <random>
-#include <cstdint>
 
 #include "helpers.h"
-#include "leg.h"
-#include "base.h"
-#include "servo.h"
 
 #pragma region Leg
 
@@ -24,11 +18,6 @@ float map_float(float value, float from_low, float from_high, float to_low, floa
 	return (value - from_low) * (to_high - to_low)
 		/ (from_high - from_low) + to_low;
 }
-
-// uint16_t angle_to_pulse(float angle) {
-// 	angle = std::clamp(angle, 0.0f, 180.0f);
-// 	return map_float(angle, 0.0f, 180.0f, ServoConfig::SERVO_MIN_PULSE, ServoConfig::SERVO_MAX_PULSE);
-// }
 
 bool is_adjacent_leg(int ref_leg_idx, int leg_idx) {
   	return ((ref_leg_idx + 1) % 2) == (leg_idx % 2);
@@ -49,9 +38,3 @@ float sin_interpolation(float start, float height, float t) {
 }
 
 #pragma endregion
-
-esp_err_t servo_set_angle(pca9685_handle_t pca, uint8_t ch, float deg)
-{
-    float counts = ServoConfig::SERVO_MIN_PULSE + (ServoConfig::SERVO_MAX_PULSE - ServoConfig::SERVO_MIN_PULSE) * deg / 180.0f;
-    return pca9685_set_duty(pca, ch, static_cast<uint16_t>(std::lround(counts)));
-}

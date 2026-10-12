@@ -1,6 +1,3 @@
-#include <stdint.h>
-#include <cstdio>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
@@ -32,5 +29,5 @@ extern "C" void app_main()
 {
     base.init();
 
-    xTaskCreate(control_task, "control", 4096, nullptr, 5, nullptr);
+    // xTaskCreate(control_task, "control", 4096, nullptr, 5, nullptr);
 }

@@ -1,15 +1,7 @@
-#include <cstdio>
-#include <string.h>
 #include <math.h>
-#include <algorithm>
 
-#include "driver/i2c_master.h"
 #include "esp_log.h"
-#include "mpu6050.h"
-#include "pca9685.h"
 
-#include "leg.h"
-#include "helpers.h"
 #include "base.h"
 #include "config.h"
 
@@ -37,7 +29,7 @@ void Base::init() {
 	init_legs();
 	// calibrate_servos();
 
-	init_imu();
+	// init_imu();
 }
 
 void Base::init_i2c() {
@@ -74,7 +66,10 @@ void Base::init_legs() {
 	// instantiate legs
 	printf("Initializing legs to neutral positions .......... ");
 	for (int i = 0; i < 4; i++) {
-		this->legs[i] = new Leg(i);
+		this->legs[i] = new Leg({
+			i,
+			this->pca
+		});
 	}
 
 	ThisThread::sleep_for(1000ms);
@@ -88,9 +83,11 @@ void Base::calibrate_servos() {
 	// servo_set_angle(this->pca, 5, 180); // tibia
 
 	// Calibrate all servos of 1 leg section
-	for (int i = 0; i < 4; i++) {
-		servo_set_angle(this->pca, i * 3, 90);
-	}
+	// for (int i = 0; i < 4; i++) {
+	// 	servo_set_angle(this->pca, i * 3, 100);
+	// }
+
+	servo_set_angle(this->pca, 1, 30);
 
 }
 

@@ -1,6 +1,8 @@
 #ifndef SERVO_h
 #define SERVO_h
 
+#include "base.h"
+
 struct ServoLimit {
 	float min_deg;
 	float max_deg;
@@ -16,19 +18,19 @@ struct LegServoLimits {
 	ServoLimit tibia;
 };
 
-
-
 namespace ServoConfig {
     constexpr float SERVO_FREQ = 50.0f;
     constexpr float SERVO_MIN_PULSE = 160.0f;
     constexpr float SERVO_MAX_PULSE = 560.0f;
 
 	constexpr LegServoLimits limits[4] = {
-		{ {  60.0f, 240.0f }, {  50.0f, 250.0f }, {  40.0f, 260.0f } },  // Front Left
-		{ {  60.0f, 240.0f }, {  50.0f, 250.0f }, {  40.0f, 260.0f } },  // Front Right
-		{ {  60.0f, 240.0f }, {  50.0f, 250.0f }, {  40.0f, 260.0f } },  // Back Right
-		{ {  60.0f, 240.0f }, {  50.0f, 250.0f }, {  40.0f, 260.0f } },  // Back Left
+		{ {  45.0f, 180.0f }, {  135.0f, 30.0f }, {  0.0f, 135.0f } },  // Front Left
+		{ {  0.0f, 135.0f }, {  45.0f, 150.0f }, {  45.0f, 180.0f } },  // Front Right
+		{ {  45.0f, 170.0f }, {  45.0f, 150.0f }, {  45.0f, 180.0f } },  // Back Right
+		{ {  10.0f, 135.0f }, {  135.0f, 30.0f }, {  0.0f, 135.0f } },  // Back Left
 	};
 }
+
+esp_err_t servo_set_angle(pca9685_handle_t pca, uint8_t ch, float deg);
 
 #endif

@@ -1,7 +1,6 @@
 #include <math.h>
 #include <algorithm>
 #include <cstdio>
-#include <cstdint>
 
 #include "types.h"
 

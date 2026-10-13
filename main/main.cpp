@@ -19,7 +19,6 @@ static void control_task(void *arg)
 
         double dt_s = dt_us * 1e-6;
         base.update(dt_s);
-        // base.drive_servo(dt_s, 3, 0, 180);
 
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(10));
     }
@@ -29,5 +28,12 @@ extern "C" void app_main()
 {
     base.init();
 
-    // xTaskCreate(control_task, "control", 4096, nullptr, 5, nullptr);
+    xTaskCreate(
+        control_task, 
+        "control", 
+        4096, 
+        nullptr, 
+        5, 
+        nullptr
+    );
 }

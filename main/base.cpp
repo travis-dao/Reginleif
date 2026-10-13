@@ -33,7 +33,7 @@ void Base::init() {
 	init_legs();
 	// calibrate_servos();
 
-	// init_imu();
+	init_imu();
 }
 
 void Base::init_i2c() {
@@ -101,6 +101,7 @@ void Base::init_imu() {
     mpu6050::Mpu6050::Config cfg;
     cfg.bus  = this->bus;
     ESP_ERROR_CHECK(this->mpu.init(cfg));
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	printf("Success\n");
 
 	// calibrating imu
@@ -131,11 +132,11 @@ void Base::update_imu() {
 	}
 
 	// update current orientation -- maybe remove in the future
-	this->current_orientation.x = -angles.roll;
+	this->current_orientation.x = angles.roll;
 	this->current_orientation.y = -angles.pitch;
 	this->current_orientation.z = 0.0f;
 	
-	printf("roll: %.2f | pitch: %.2f\n", current_orientation.x, current_orientation.y);
+	// printf("roll: %.2f | pitch: %.2f\n", current_orientation.x, current_orientation.y);
 }
 
 void Base::move() {
@@ -211,7 +212,7 @@ void Base::update(float dt_s) {
 
 	move();
 
-	// update_legs();
+	update_legs();
 }
 
 void Base::update_rot_matrix(float delta_t) {
@@ -260,10 +261,6 @@ void Base::update_rot_matrix(float delta_t) {
   prev_error = error;
 
   this->rot_mat = rotation_matrix;
-}
-
-Vec3 Base::get_imu_angles() {
-	return Vec3 {-angles.roll, -angles.pitch, 0.0f};
 }
 
 

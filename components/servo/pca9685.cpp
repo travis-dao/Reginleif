@@ -278,7 +278,9 @@ esp_err_t Pca9685::setDuty(uint8_t ch, uint16_t duty)
 {
     ESP_RETURN_ON_FALSE(dev_, ESP_ERR_INVALID_STATE, TAG, "not initialized");
     ESP_RETURN_ON_FALSE(ch <= CHANNEL_ALL && duty <= MAX_COUNT,
-                        ESP_ERR_INVALID_ARG, TAG, "bad args");
+                    ESP_ERR_INVALID_ARG, TAG,
+                    "bad args: ch=%u duty=%u (CHANNEL_ALL=%u MAX_COUNT=%u)",
+                    ch, duty, (unsigned)CHANNEL_ALL, (unsigned)MAX_COUNT);
     Guard g(lock_);
     return writeDuty(ch, duty);
 }

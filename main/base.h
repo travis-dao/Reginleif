@@ -19,7 +19,7 @@ class Base {
 		float get_dt_s() { return this->dt_s; }
 		int get_current_airborne_leg() { return this->current_airborne_leg; }
 
-		Vec3 get_imu_angles();
+		Vec3 get_imu_angles() { return this->current_orientation; }
 		Vec3 get_target_orientation() { return this->target_orientation; }
 		Mat3 get_rot_matrix() { return this->rot_mat; }
 

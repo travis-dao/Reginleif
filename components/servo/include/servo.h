@@ -25,10 +25,26 @@ namespace ServoConfig {
     constexpr float SERVO_MAX_PULSE = 560.0f;
 
 	constexpr LegServoLimits limits[4] = {
-		{ {  45.0f, 180.0f }, {  135.0f, 30.0f }, {  0.0f, 135.0f } },  // Front Left
-		{ {  0.0f, 135.0f }, {  45.0f, 150.0f }, {  45.0f, 180.0f } },  // Front Right
-		{ {  45.0f, 170.0f }, {  45.0f, 150.0f }, {  45.0f, 180.0f } },  // Back Right
-		{ {  10.0f, 135.0f }, {  135.0f, 30.0f }, {  0.0f, 135.0f } },  // Back Left
+		{ // Front Left
+			{  45.0f, 180.0f }, 
+			{  40.0f, 135.0f }, 
+			{  0.0f, 135.0f } 
+		},
+		{ // Front Right
+			{  0.0f, 135.0f }, 
+			{  45.0f, 140.0f }, 
+			{  45.0f, 180.0f } 
+		},
+		{ // Back Right
+			{  45.0f, 170.0f }, 
+			{  45.0f, 140.0f }, 
+			{  45.0f, 180.0f }
+		 },
+		{ // Back Left
+			{  10.0f, 135.0f }, 
+			{  40.0f, 135.0f }, 
+			{  0.0f, 135.0f } 
+		},
 	};
 }
 

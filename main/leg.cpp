@@ -87,8 +87,6 @@ void Leg::move_leg() {
 	// check to flip angles for reverse mounted servos (leg side)
 	Theta3 target_angles = ik(adjusted_target_pos);
 	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
-	
-	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// clamp servos to calibrated limits
 	target_angles = clamp_to_limits(target_angles);
@@ -97,6 +95,8 @@ void Leg::move_leg() {
 	servo_set_angle(this->pca, this->info.id * 3, target_angles.coxa);
 	servo_set_angle(this->pca, this->info.id * 3 + 1, target_angles.femur);
 	servo_set_angle(this->pca, this->info.id * 3 + 2, target_angles.tibia);
+	
+	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// update members
 	this->angles = target_angles;
@@ -160,18 +160,19 @@ void Leg::update() {
 	// apply_pid_stabilization();
 
 	// 2. update target pos based on state
-	if (this->leg_state == SWING) {
-		// calc step length from where leg lifts
-		float target_pos_x = this->pos_state.base_neutral_pos.x + (Configs::Movement::MAX_STEP_LENGTH_MM / 2);
-		float adjusted_step_length = target_pos_x - this->pos_state.last_grounded_pos.x;
+	// if (this->leg_state == SWING) {
+	// 	// calc step length from where leg lifts
+	// 	float target_pos_x = this->pos_state.base_neutral_pos.x + (Configs::Movement::MAX_STEP_LENGTH_MM / 2);
+	// 	float adjusted_step_length = target_pos_x - this->pos_state.last_grounded_pos.x;
 
-		update_swing(adjusted_step_length, Configs::Movement::STEP_HEIGHT_MM);
-	} else if (this->leg_state == STANCE) {
-		update_stance();
-	} else {
-		// this->target_pos = this->base_neutral_pos; // TODO: CHANGE LATER
-		balance(imu_angles);
-	}
+	// 	update_swing(adjusted_step_length, Configs::Movement::STEP_HEIGHT_MM);
+	// } else if (this->leg_state == STANCE) {
+	// 	update_stance();
+	// } else {
+	// 	this->pos_state.target_pos = this->pos_state.base_neutral_pos; // TODO: CHANGE LATER
+	// }
+
+	// balance(imu_angles);
 
 	// 3. while grounded, update pos to calculate proper step length
 	if (is_grounded()) {
@@ -183,6 +184,7 @@ void Leg::update() {
 }
 
 void Leg::balance(const Vec3& angles) {
+	// printf("balancing\n");
 	if (this->leg_state == SWING) return;
 
 	// 3d plane method
@@ -195,7 +197,7 @@ void Leg::balance(const Vec3& angles) {
 	float offset_delta = fabsf((Configs::Offset::neutral_offset.z + offset) - this->pos_state.curr_pos.z);
 
 	// only move leg if change is substantial
-	if (offset_delta > 1) {
+	if (offset_delta > 0) {
 		this->pos_state.target_pos = this->pos_state.base_neutral_pos + Vec3 { 0, 0, offset };
 	}
 }

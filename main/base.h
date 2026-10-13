@@ -38,9 +38,9 @@ class Base {
 		Mat3 rot_mat;
 
     	i2c_master_bus_handle_t bus;
-		pca9685_handle_t pca;
-		mpu6050_handle_t mpu;
-		mpu6050_angles_t angles;
+		pca9685::Pca9685 pca;
+		mpu6050::Mpu6050 mpu;
+		mpu6050::Angles angles;
 
 		void init_i2c();
 		void init_servo_driver();

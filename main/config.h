@@ -4,7 +4,7 @@
 #include "helpers.h"
 #include "servo.h"
 
-namespace Config {
+namespace Configs {
     namespace Leg {
         constexpr float femur_length = 122.64f;
         constexpr float tibia_length = 34.66f + 147.03f;

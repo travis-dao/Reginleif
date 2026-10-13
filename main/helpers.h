@@ -25,14 +25,4 @@ namespace Interpolation {
 	Vec3 circular_interpolation(float radius, float start_angle, float angle_delta, float t);
 }
 
-namespace ThisThread {
-    inline void sleep_for(std::chrono::milliseconds) { /* no-op on host */ }
-}
-
-constexpr std::chrono::milliseconds operator""ms(unsigned long long ms) {
-    return std::chrono::milliseconds{
-        static_cast<std::chrono::milliseconds::rep>(ms)
-    };
-}
-
 #endif

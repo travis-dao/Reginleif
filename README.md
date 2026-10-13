@@ -8,3 +8,19 @@
 - Coxa: 90 = outward
 - Femur: 0 = down
 - Tibia: 180 = straight
+
+# Commands
+
+idf.py reconfigure
+
+idf.py build
+
+idf.py clean
+
+idf.py full clean
+
+idf.py flash
+
+idf.py monitor
+
+idf.py flash monitor

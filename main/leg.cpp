@@ -2,15 +2,17 @@
 
 #include "leg.h"
 #include "config.h"
+#include "base.h"
+#include "servo.h"
 
-Leg::Leg(config cfg): 
+Leg::Leg(const Config& cfg): 
 	info(cfg.id), 
 	pca(cfg.pca) 
 {
 	this->orientation_offset = 0.0f;
 	this->pos_state = {
-		.base_neutral_pos = Config::Offset::neutral_vector[cfg.id] * Config::Offset::neutral_offset,
-		.true_neutral_pos = Config::Offset::neutral_vector[cfg.id] * (Config::Offset::neutral_offset + Config::Offset::body_offset),
+		.base_neutral_pos = Configs::Offset::neutral_vector[cfg.id] * Configs::Offset::neutral_offset,
+		.true_neutral_pos = Configs::Offset::neutral_vector[cfg.id] * (Configs::Offset::neutral_offset + Configs::Offset::body_offset),
 		.curr_pos = this->pos_state.base_neutral_pos,
 		.target_pos = this->pos_state.base_neutral_pos,
 		.last_grounded_pos = this->pos_state.base_neutral_pos,
@@ -46,26 +48,26 @@ Theta3 Leg::ik(Vec3 target_foot_pos) {
 	float d = sqrt(target_foot_pos.x * target_foot_pos.x + target_foot_pos.y * target_foot_pos.y);
 
 	// adjust dis for offset to where coxa servo connects femur servo
-	float r = d - Config::Leg::body_to_coxa_x_offset;
+	float r = d - Configs::Leg::body_to_coxa_x_offset;
 
 	// dis to target pos on x-z plane, basically dis from femur servo to tip of tibia
-	target_foot_pos.z += Config::Leg::body_to_coxa_z_offset;
+	target_foot_pos.z += Configs::Leg::body_to_coxa_z_offset;
 	float c = sqrt(target_foot_pos.z * target_foot_pos.z + r * r);
 
 	float c_squared = c * c;
-	float a_squared = Config::Leg::femur_length * Config::Leg::femur_length;
-	float b_squared = Config::Leg::tibia_length * Config::Leg::tibia_length;
+	float a_squared = Configs::Leg::femur_length * Configs::Leg::femur_length;
+	float b_squared = Configs::Leg::tibia_length * Configs::Leg::tibia_length;
 
 	// calculate femur servo
 	float cos2 = std::clamp(
-		(a_squared + c_squared - b_squared) / (2 * Config::Leg::femur_length * c), 
+		(a_squared + c_squared - b_squared) / (2 * Configs::Leg::femur_length * c), 
 		-1.0f, 
 		1.0f
 	);
 
 	// calculate tibia servo
 	float cos3 = std::clamp(
-		(a_squared + b_squared - c_squared) / (2 * Config::Leg::femur_length * Config::Leg::tibia_length), 
+		(a_squared + b_squared - c_squared) / (2 * Configs::Leg::femur_length * Configs::Leg::tibia_length), 
 		-1.0f, 
 		1.0f
 	);
@@ -87,6 +89,9 @@ void Leg::move_leg() {
 	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
 	
 	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
+
+	// clamp servos to calibrated limits
+	target_angles = clamp_to_limits(target_angles);
 
 	// move servos
 	servo_set_angle(this->pca, this->info.id * 3, target_angles.coxa);
@@ -136,14 +141,14 @@ void Leg::update_swing(const float step_length, const float step_height) {
 	}
 
 	// x = velocity-based
-	float velocity_x = (M_PI * step_length / (2.0f * Config::Movement::SWING_DURATION_S)) * sin(M_PI * this->phase);
+	float velocity_x = (M_PI * step_length / (2.0f * Configs::Movement::SWING_DURATION_S)) * sin(M_PI * this->phase);
 	this->pos_state.target_pos.x += velocity_x * base.get_dt_s();
 
 	// z = position-based, add on top of whatever update_orientation() just set
 	this->pos_state.target_pos.z = this->pos_state.base_neutral_pos.z + step_height * sin(M_PI * this->phase);
 
 	// advance phase
-	this->phase += base.get_dt_s() / Config::Movement::SWING_DURATION_S;
+	this->phase += base.get_dt_s() / Configs::Movement::SWING_DURATION_S;
 	if (this->phase > 1.0f) this->phase = 1.0f;
 }
 
@@ -157,10 +162,10 @@ void Leg::update() {
 	// 2. update target pos based on state
 	if (this->leg_state == SWING) {
 		// calc step length from where leg lifts
-		float target_pos_x = this->pos_state.base_neutral_pos.x + (Config::Movement::MAX_STEP_LENGTH_MM / 2);
+		float target_pos_x = this->pos_state.base_neutral_pos.x + (Configs::Movement::MAX_STEP_LENGTH_MM / 2);
 		float adjusted_step_length = target_pos_x - this->pos_state.last_grounded_pos.x;
 
-		update_swing(adjusted_step_length, Config::Movement::STEP_HEIGHT_MM);
+		update_swing(adjusted_step_length, Configs::Movement::STEP_HEIGHT_MM);
 	} else if (this->leg_state == STANCE) {
 		update_stance();
 	} else {
@@ -187,7 +192,7 @@ void Leg::balance(const Vec3& angles) {
 	float offset = -(A * this->pos_state.true_neutral_pos.x + B * this->pos_state.true_neutral_pos.y);
 
 	// difference between target z pos and current z pos
-	float offset_delta = fabsf((Config::Offset::neutral_offset.z + offset) - this->pos_state.curr_pos.z);
+	float offset_delta = fabsf((Configs::Offset::neutral_offset.z + offset) - this->pos_state.curr_pos.z);
 
 	// only move leg if change is substantial
 	if (offset_delta > 1) {

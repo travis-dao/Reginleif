@@ -4,6 +4,10 @@
 
 #include "base.h"
 #include "config.h"
+#include "freertos/projdefs.h"
+#include "ism330.h"
+#include "mpu6050.h"
+#include "pca9685.h"
 
 float SPEED_LERP_RATE = 4.0f;
 
@@ -37,28 +41,27 @@ void Base::init_i2c() {
 	esp_log_level_set("gpio", ESP_LOG_WARN); // disable warnings
 	printf("Initializing I2C .......... ");
     i2c_master_bus_config_t bus_cfg = {};
-    bus_cfg.i2c_port          = Config::I2C::I2C_PORT;
-    bus_cfg.sda_io_num        = Config::I2C::SDA_GPIO;
-    bus_cfg.scl_io_num        = Config::I2C::SCL_GPIO;
+    bus_cfg.i2c_port          = Configs::I2C::I2C_PORT;
+    bus_cfg.sda_io_num        = Configs::I2C::SDA_GPIO;
+    bus_cfg.scl_io_num        = Configs::I2C::SCL_GPIO;
     bus_cfg.clk_source        = I2C_CLK_SRC_DEFAULT;
     bus_cfg.glitch_ignore_cnt = 7;
     bus_cfg.flags.enable_internal_pullup = true;
     ESP_ERROR_CHECK(i2c_new_master_bus(&bus_cfg, &bus));
 
-	ThisThread::sleep_for(1000ms);
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	printf("Success\n");
 }
 
 void Base::init_servo_driver() {
 	// init servo driver and connect to master i2c bus
 	printf("Initializing PCA9685 .......... ");
-	pca9685_config_t cfg = {};
+	pca9685::Pca9685::Config cfg;
     cfg.bus         = this->bus;
-    cfg.addr        = PCA9685_I2C_ADDR_DEFAULT;
     cfg.pwm_freq_hz = ServoConfig::SERVO_FREQ;
-    ESP_ERROR_CHECK(pca9685_new(&cfg, &this->pca));
+    ESP_ERROR_CHECK(this->pca.init(cfg));
 
-	ThisThread::sleep_for(1000ms);
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	printf("Success\n");
 }
 
@@ -72,7 +75,7 @@ void Base::init_legs() {
 		});
 	}
 
-	ThisThread::sleep_for(1000ms);
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	printf("Success\n");
 }
 
@@ -95,21 +98,21 @@ void Base::init_imu() {
 	// init imu and connect to master i2c bus
 	esp_log_level_set("mpu6050", ESP_LOG_ERROR);
 	printf("Initializing MPU6050 .......... ");
-    mpu6050_config_t cfg = MPU6050_CONFIG_DEFAULT();
-    cfg.bus = this->bus;
-    ESP_ERROR_CHECK(mpu6050_init(&cfg, &this->mpu));
+    mpu6050::Mpu6050::Config cfg;
+    cfg.bus  = this->bus;
+    ESP_ERROR_CHECK(this->mpu.init(cfg));
 	printf("Success\n");
 
 	// calibrating imu
-	ThisThread::sleep_for(500ms);
+	vTaskDelay(pdMS_TO_TICKS(500));
 	printf("Calibrating MPU6050 .......... ");
 
-    ESP_ERROR_CHECK(mpu6050_calibrate_gyro(this->mpu, 200));
-    ESP_ERROR_CHECK(mpu6050_calibrate_level(this->mpu, 200));
+    ESP_ERROR_CHECK(this->mpu.calibrate_gyro(200));
+    ESP_ERROR_CHECK(this->mpu.calibrate_level(200));
 
 	this->current_orientation = get_imu_angles();
 
-	ThisThread::sleep_for(1000ms);
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	printf("Success\n");
 }
 
@@ -122,7 +125,7 @@ void Base::update_legs() {
 
 void Base::update_imu() {
 	// try to update imu with new measurements
-	if (mpu6050_get_angles(this->mpu, &this->angles) != ESP_OK) {
+	if (this->mpu.get_angles(this->angles) != ESP_OK) {
 		printf("Failed to read IMU\n");
 		return;
 	}
@@ -150,7 +153,7 @@ void Base::move() {
 
 	// find next leg to move
 	if (all_legs_grounded) {
-		this->current_airborne_leg = Config::Movement::next_leg_gait[this->current_airborne_leg + 1];
+		this->current_airborne_leg = Configs::Movement::next_leg_gait[this->current_airborne_leg + 1];
 		this->legs[current_airborne_leg]->update_state(SWING);
 	}
 }
@@ -174,7 +177,7 @@ void Base::update_speed() {
 			break;
 		case WALK:
 		case RUN:
-			target_speed = (Config::Movement::MAX_STEP_LENGTH_MM * 2) / (Config::Movement::SWING_DURATION_S * 3); // calc stance speed
+			target_speed = (Configs::Movement::MAX_STEP_LENGTH_MM * 2) / (Configs::Movement::SWING_DURATION_S * 3); // calc stance speed
 			break;
 		default:
 			target_speed = 0.0f;
@@ -220,18 +223,18 @@ void Base::update_rot_matrix(float delta_t) {
   Vec3 error = ref_angles - get_imu_angles();
 
   // pid stuff
-  Vec3 proportional_term = error * Config::PID::K_p;
+  Vec3 proportional_term = error * Configs::PID::K_p;
 
   integral_sum = integral_sum + (error * delta_t);
-//   integral_sum = clamp_vec3(integral_sum, -Config::PID::INTEGRAL_LIMIT_DEG, Config::PID::INTEGRAL_LIMIT_DEG); // anti-windup
+//   integral_sum = clamp_vec3(integral_sum, -Config::PID::INTEGRAL_LIMIT_DEG, Configs::PID::INTEGRAL_LIMIT_DEG); // anti-windup
 
-  Vec3 integral_term = integral_sum * Config::PID::K_i;
+  Vec3 integral_term = integral_sum * Configs::PID::K_i;
 
-  Vec3 derivative_term = (error - prev_error) / delta_t * Config::PID::K_d;
+  Vec3 derivative_term = (error - prev_error) / delta_t * Configs::PID::K_d;
 
   // add the P, I, D terms
   Vec3 compensation_angles_deg = proportional_term + integral_term + derivative_term;
-//   compensation_angles_deg = clamp_vec3(compensation_angles_deg, -Config::PID::COMPENSATION_LIMIT_DEG, Config::PID::COMPENSATION_LIMIT_DEG); // output saturation
+//   compensation_angles_deg = clamp_vec3(compensation_angles_deg, -Config::PID::COMPENSATION_LIMIT_DEG, Configs::PID::COMPENSATION_LIMIT_DEG); // output saturation
 
   Vec3 compensation_angles = compensation_angles_deg * (M_PI / 180);
 

@@ -31,12 +31,12 @@ struct PositionState {
 
 class Leg {
 	public:
-		struct config {
+		struct Config {
 			int id;
-			pca9685_handle_t pca;
+			pca9685::Pca9685& pca;
 		};
 
-		Leg(config cfg);
+		Leg(const Config& cfg);
 
 		void update();
 		void update_state(const LegState state) { this->leg_state = state; }
@@ -51,7 +51,7 @@ class Leg {
 		LegState leg_state;
 		PositionState pos_state;
 		Info info;
-		pca9685_handle_t pca;
+		pca9685::Pca9685& pca;
 
 		Theta3 ik(Vec3 target_foot_pos);
 		Theta3 get_inverted_angles(Theta3 angles);

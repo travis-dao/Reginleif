@@ -1,7 +1,8 @@
 #ifndef SERVO_h
 #define SERVO_h
 
-#include "base.h"
+#include "esp_err.h"
+#include "pca9685.h"
 
 struct ServoLimit {
 	float min_deg;
@@ -31,6 +32,6 @@ namespace ServoConfig {
 	};
 }
 
-esp_err_t servo_set_angle(pca9685_handle_t pca, uint8_t ch, float deg);
+esp_err_t servo_set_angle(pca9685::Pca9685 &pca, uint8_t ch, float deg);
 
 #endif

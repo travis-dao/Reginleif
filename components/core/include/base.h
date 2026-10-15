@@ -4,6 +4,7 @@
 #include "leg.h"
 #include "pca9685.h"
 #include "mpu6050.h"
+#include "ism330.h"
 
 enum MoveState {
 	REST, WALK, RUN, TURN

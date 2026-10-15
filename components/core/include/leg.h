@@ -1,7 +1,6 @@
 #ifndef LEG_h
 #define LEG_h
 
-#include "helpers.h"
 #include "pca9685.h"
 #include "types.h"
 

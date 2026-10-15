@@ -1,13 +1,11 @@
 #include <math.h>
+#include <algorithm>
 
 #include "esp_log.h"
+#include "freertos/projdefs.h"
 
 #include "base.h"
 #include "config.h"
-#include "freertos/projdefs.h"
-#include "ism330.h"
-#include "mpu6050.h"
-#include "pca9685.h"
 
 float SPEED_LERP_RATE = 4.0f;
 

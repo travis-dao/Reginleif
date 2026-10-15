@@ -1,4 +1,5 @@
 #include <math.h>
+#include <algorithm>
 
 #include "leg.h"
 #include "config.h"

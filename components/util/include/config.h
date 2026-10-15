@@ -1,7 +1,7 @@
 #ifndef CONFIG_h
 #define CONFIG_h
 
-#include "helpers.h"
+#include "types.h"
 #include "servo.h"
 
 namespace Configs {

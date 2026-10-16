@@ -3,6 +3,7 @@
 
 #include "pca9685.h"
 #include "types.h"
+#include "pid_stabilize.h"
 
 enum LegState {
  	HOLD, SWING, STANCE
@@ -28,11 +29,15 @@ struct PositionState {
 	Vec3 last_grounded_pos;
 };
 
+class Base;
+
 class Leg {
 	public:
 		struct Config {
 			int id;
+			Base& base_;
 			pca9685::Pca9685& pca;
+			Stabilizer& stabilizer_;
 		};
 
 		Leg(const Config& cfg);
@@ -50,11 +55,14 @@ class Leg {
 		LegState leg_state;
 		PositionState pos_state;
 		Info info;
+
+		Base& base_;
 		pca9685::Pca9685& pca;
+		Stabilizer& stabilizer_;
 
 		Theta3 ik(Vec3 target_foot_pos);
-		Theta3 get_inverted_angles(Theta3 angles);
-		Theta3 clamp_to_limits(Theta3 angles);
+		Theta3 invert_angles(const Theta3& angles);
+		Theta3 clamp_to_limits(const Theta3& angles) const;
 		void move_leg();
 
 		void update_swing(const float step_length, const float step_height);

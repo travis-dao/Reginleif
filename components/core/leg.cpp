@@ -5,10 +5,13 @@
 #include "config.h"
 #include "base.h"
 #include "servo.h"
+#include "pid_stabilize.h"
 
 Leg::Leg(const Config& cfg): 
-	info(cfg.id), 
-	pca(cfg.pca) 
+	info(cfg.id),
+	base_(cfg.base_),
+	pca(cfg.pca),
+	stabilizer_(cfg.stabilizer_)
 {
 	this->orientation_offset = 0.0f;
 	this->pos_state = {
@@ -24,18 +27,18 @@ Leg::Leg(const Config& cfg):
 	move_leg();
 }
 
-Theta3 Leg::get_inverted_angles(Theta3 out_angles) {
-	out_angles.coxa = 180.0f - out_angles.coxa;
-	out_angles.femur = 180.0f - out_angles.femur;
-	out_angles.tibia = 180.0f - out_angles.tibia;
-
-	return out_angles;
+Theta3 Leg::invert_angles(const Theta3& angles) {
+	return Theta3 {
+		180.0f - angles.coxa,
+		180.0f - angles.femur,
+		180.0f - angles.tibia
+	};
 }
 
-Theta3 Leg::clamp_to_limits(Theta3 angles) {
+Theta3 Leg::clamp_to_limits(const Theta3& angles) const {
 	const LegServoLimits& lim = ServoConfig::limits[this->info.id];
 
-	return {
+	return Theta3 {
 		lim.coxa.clamp(angles.coxa),
 		lim.femur.clamp(angles.femur),
 		lim.tibia.clamp(angles.tibia)
@@ -87,10 +90,13 @@ void Leg::move_leg() {
 
 	// check to flip angles for reverse mounted servos (leg side)
 	Theta3 target_angles = ik(adjusted_target_pos);
-	target_angles = this->info.is_right_leg ? target_angles : get_inverted_angles(target_angles);
+
+	if (this->info.is_right_leg) {
+		invert_angles(target_angles);
+	}
 
 	// clamp servos to calibrated limits
-	target_angles = clamp_to_limits(target_angles);
+	clamp_to_limits(target_angles);
 
 	// move servos
 	servo_set_angle(this->pca, this->info.id * 3, target_angles.coxa);
@@ -105,7 +111,7 @@ void Leg::move_leg() {
 }
 
 void Leg::update_orientation() {
-	Vec3 target_orientation = base.get_target_orientation();
+	Vec3 target_orientation = this->base_.get_target_orientation();
 
 	float A = -tan(target_orientation.y * M_PI / 180.0f);
 	float B = tan(target_orientation.x * M_PI / 180.0f);
@@ -121,8 +127,8 @@ void Leg::update_orientation() {
 
 void Leg::apply_pid_stabilization() {
 	// apply rot matrix to pos
-	if (base.get_dt_s() > 0 && leg_state != LegState::SWING) {
-		this->pos_state.target_pos = base.get_rot_matrix() * this->pos_state.target_pos;
+	if (this->base_.get_dt_s() > 0 && this->leg_state != LegState::SWING) {
+		this->pos_state.target_pos = this->stabilizer_.rot_mat * this->pos_state.target_pos;
 	}
 }
 
@@ -131,7 +137,7 @@ void Leg::update_stance() {
 	this->phase = 0.0f;
 
 	// move leg backwards at body's current speed
-	this->pos_state.target_pos.x += base.get_speed() * base.get_dt_s() * -1;
+	this->pos_state.target_pos.x += this->base_.get_speed() * this->base_.get_dt_s() * -1.0f;
 }
 
 void Leg::update_swing(const float step_length, const float step_height) {
@@ -143,18 +149,18 @@ void Leg::update_swing(const float step_length, const float step_height) {
 
 	// x = velocity-based
 	float velocity_x = (M_PI * step_length / (2.0f * Configs::Movement::SWING_DURATION_S)) * sin(M_PI * this->phase);
-	this->pos_state.target_pos.x += velocity_x * base.get_dt_s();
+	this->pos_state.target_pos.x += velocity_x * this->base_.get_dt_s();
 
 	// z = position-based, add on top of whatever update_orientation() just set
 	this->pos_state.target_pos.z = this->pos_state.base_neutral_pos.z + step_height * sin(M_PI * this->phase);
 
 	// advance phase
-	this->phase += base.get_dt_s() / Configs::Movement::SWING_DURATION_S;
+	this->phase += this->base_.get_dt_s() / Configs::Movement::SWING_DURATION_S;
 	if (this->phase > 1.0f) this->phase = 1.0f;
 }
 
 void Leg::update() {
-	const Vec3 imu_angles = base.get_imu_angles();
+	const Vec3 imu_angles = this->base_.get_imu_angles();
 
 	// 1. update orientation offset and target_pos.z based on body's orientation
 	// update_orientation();

@@ -9,7 +9,13 @@
 
 float SPEED_LERP_RATE = 4.0f;
 
-Base::Base() {
+Base::Base()
+	: stabilizer_({
+		Configs::PID::K_p,
+		Configs::PID::K_i,
+		Configs::PID::K_d
+	})
+{
 	this->current_airborne_leg = -1;
 	this->current_speed = 0.0f;
 	this->state = REST;
@@ -67,9 +73,11 @@ void Base::init_legs() {
 	// instantiate legs
 	printf("Initializing legs to neutral positions .......... ");
 	for (int i = 0; i < 4; i++) {
-		this->legs[i] = new Leg({
+		this->legs_[i] = new Leg({
 			i,
-			this->servo_driver
+			*this,
+			this->servo_driver,
+			this->stabilizer_,
 		});
 	}
 
@@ -118,7 +126,7 @@ void Base::init_imu() {
 void Base::update_legs() {
 	// call update on each leg
 	for (int i = 0; i < 4; i++) {
-		legs[i]->update();
+		legs_[i]->update();
 	}
 }
 
@@ -145,7 +153,7 @@ void Base::move() {
 	// check if all legs are grounded
 	bool all_legs_grounded = true;
 	for (int i = 0; i < 4; i++) {
-		if (!legs[i]->is_grounded()) {
+		if (!legs_[i]->is_grounded()) {
 			all_legs_grounded = false;
 		}
 	}
@@ -153,7 +161,7 @@ void Base::move() {
 	// find next leg to move
 	if (all_legs_grounded) {
 		this->current_airborne_leg = Configs::Movement::next_leg_gait[this->current_airborne_leg + 1];
-		this->legs[current_airborne_leg]->update_state(SWING);
+		this->legs_[this->current_airborne_leg]->update_state(SWING);
 	}
 }
 
@@ -197,97 +205,15 @@ void Base::update_speed() {
 
 void Base::update(float dt_s) {
 	this->dt_s = dt_s;
+
 	update_imu();
+	stabilizer_.update(dt_s, this->current_orientation);
 
-	input_controller(Vec3 {0.0f, 0.0f, 0.0f});
+	// input_controller(Vec3 {0.0f, 0.0f, 0.0f});
 
-	update_speed();
-	// update_orientation();
+	// update_speed();
 
-	if (base.get_dt_s() > 0) {
-		// update_rot_matrix(dt_s);
-	}
-
-	move();
+	// move();
 
 	update_legs();
 }
-
-void Base::update_rot_matrix(float delta_t) {
-  const static Vec3 ref_angles { 0, 0, 0 };
-  static Vec3 prev_error { 0, 0, 0 };
-  static Vec3 integral_sum { 0, 0, 0 };
-
-  // error
-  Vec3 error = ref_angles - get_imu_angles();
-
-  // pid stuff
-  Vec3 proportional_term = error * Configs::PID::K_p;
-
-  integral_sum = integral_sum + (error * delta_t);
-//   integral_sum = clamp_vec3(integral_sum, -Config::PID::INTEGRAL_LIMIT_DEG, Configs::PID::INTEGRAL_LIMIT_DEG); // anti-windup
-
-  Vec3 integral_term = integral_sum * Configs::PID::K_i;
-
-  Vec3 derivative_term = (error - prev_error) / delta_t * Configs::PID::K_d;
-
-  // add the P, I, D terms
-  Vec3 compensation_angles_deg = proportional_term + integral_term + derivative_term;
-//   compensation_angles_deg = clamp_vec3(compensation_angles_deg, -Config::PID::COMPENSATION_LIMIT_DEG, Configs::PID::COMPENSATION_LIMIT_DEG); // output saturation
-
-  Vec3 compensation_angles = compensation_angles_deg * (M_PI / 180);
-
-  // calculate rotation matrix
-  Mat3 rotation_matrix_x {{
-    {1, 								0, 							0},
-    {0, cos(compensation_angles.x), -sin(compensation_angles.x)},
-    {0, sin(compensation_angles.x), cos(compensation_angles.x)}
-  }};
-  Mat3 rotation_matrix_y {{
-    {cos(compensation_angles.y),  0, sin(compensation_angles.y)},
-    {0, 								1, 							 0},
-    {-sin(compensation_angles.y), 0, cos(compensation_angles.y)}
-  }};
-  Mat3 rotation_matrix_z {{
-    {cos(compensation_angles.z), -sin(compensation_angles.z), 0},
-    {sin(compensation_angles.z), cos(compensation_angles.z),  0},
-    {0, 							   0, 							 1}
-  }};
-
-  Mat3 rotation_matrix = rotation_matrix_x * rotation_matrix_y * rotation_matrix_z;
-
-  prev_error = error;
-
-  this->rot_mat = rotation_matrix;
-}
-
-
-// void Base::update_orientation() {
-// 	this->current_orientation = get_imu_angles();
-// 	return;
-
-// 	float a = 10.0f;
-
-// 	switch (this->current_airborne_leg) {
-// 		case 0:
-// 			target_orientation.x = a;
-// 			target_orientation.y = -a;
-// 			break;
-// 		case 1:
-// 			target_orientation.x = -a;
-// 			target_orientation.y = a;
-// 			break;
-// 		case 2:
-// 			target_orientation.x = -a;
-// 			target_orientation.y = a;
-// 			break;
-// 		case 3:
-// 			target_orientation.x = a;
-// 			target_orientation.y = a;
-// 			break;
-// 		default:
-// 			target_orientation.x = 0.0f;
-// 			target_orientation.y = 0.0f;
-// 			break;
-// 	}
-// }

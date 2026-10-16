@@ -5,6 +5,7 @@
 #include "pca9685.h"
 #include "mpu6050.h"
 #include "ism330.h"
+#include "pid_stabilize.h"
 
 enum MoveState {
 	REST, WALK, RUN, TURN
@@ -22,7 +23,6 @@ class Base {
 
 		Vec3 get_imu_angles() { return this->current_orientation; }
 		Vec3 get_target_orientation() { return this->target_orientation; }
-		Mat3 get_rot_matrix() { return this->rot_mat; }
 
 	private:
 		float current_speed;
@@ -31,25 +31,23 @@ class Base {
 		Vec3 target_orientation = Vec3 { 0.0f, 0.0f, 0.0f };
 
 		MoveState state;
-		Leg* legs[4];
+		Leg* legs_[4];
 
 		float dt_s;
 		Vec3 input;
-
-		Mat3 rot_mat;
 
     	i2c_master_bus_handle_t bus;
 		pca9685::Pca9685 servo_driver;
 		mpu6050::Mpu6050 imu;
 		mpu6050::Angles angles;
 
+		Stabilizer stabilizer_;
+
 		void init_i2c();
 		void init_servo_driver();
 		void init_imu();
 
 		void init_legs();
-
-
 		void calibrate_servos();
 
 		void input_controller(Vec3 input);
@@ -57,11 +55,8 @@ class Base {
 		void update_legs();
 		void update_imu();
 		void update_speed();
-		void update_rot_matrix(float delta_t);
 
 		void move();
 };
-
-extern Base base;
 
 #endif

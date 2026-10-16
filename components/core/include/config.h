@@ -51,9 +51,6 @@ namespace Configs {
         constexpr float K_p = 1.5;
         constexpr float K_i = 0.0;
         constexpr float K_d = 0.0;
-
-        constexpr float INTEGRAL_LIMIT_DEG = 30.0;  // max contribution of integral_sum, in degrees
-        constexpr float COMPENSATION_LIMIT_DEG = 30.0; // max total correction angle, in degrees
     }
 
     namespace I2C {

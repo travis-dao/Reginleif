@@ -4,7 +4,7 @@
 
 #include "base.h"
 
-Base base;
+Base base_;
 
 static void control_task(void *arg)
 {
@@ -18,7 +18,7 @@ static void control_task(void *arg)
         last_time_us = now_us;
 
         double dt_s = dt_us * 1e-6;
-        base.update(dt_s);
+        base_.update(dt_s);
 
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(10));
     }
@@ -26,7 +26,7 @@ static void control_task(void *arg)
 
 extern "C" void app_main()
 {
-    base.init();
+    base_.init();
 
     xTaskCreate(
         control_task, 

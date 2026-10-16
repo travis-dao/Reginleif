@@ -17,12 +17,12 @@ class Base {
 		void init();
 		void update(float dt_s);
 		
-		float get_speed() { return this->current_speed; }
+		float getSpeed() { return this->current_speed; }
 		float get_dt_s() { return this->dt_s; }
-		int get_current_airborne_leg() { return this->current_airborne_leg; }
+		int getCurrentAirborneLeg() { return this->current_airborne_leg; }
 
-		Vec3 get_imu_angles() { return this->current_orientation; }
-		Vec3 get_target_orientation() { return this->target_orientation; }
+		Vec3 getImuAngles() { return this->current_orientation; }
+		Vec3 getTargetOrientation() { return this->target_orientation; }
 
 	private:
 		float current_speed;
@@ -43,18 +43,18 @@ class Base {
 
 		Stabilizer stabilizer_;
 
-		void init_i2c();
-		void init_servo_driver();
-		void init_imu();
+		void initI2C();
+		void initServoDriver();
+		void initImu();
 
-		void init_legs();
-		void calibrate_servos();
+		void initLegs();
+		void calibrateServos();
 
-		void input_controller(Vec3 input);
+		void inputController(Vec3 input);
 
-		void update_legs();
-		void update_imu();
-		void update_speed();
+		void updateLegs();
+		void updateImu();
+		void updateSpeed();
 
 		void move();
 };

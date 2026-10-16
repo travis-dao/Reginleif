@@ -26,7 +26,7 @@ class Stabilizer {
         Vec3 integral_sum;
         Vec3 last_error;
 
-        Mat3 get_rotation_matrix(const Vec3& compensation_angles);
+        Mat3 getRotationMatrix(const Vec3& compensation_angles);
 };
 
 #endif

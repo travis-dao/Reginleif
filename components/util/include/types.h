@@ -36,17 +36,6 @@ struct Vec3 {
 	float magnitude(Vec3 on = Vec3 { 1, 1, 1}) const;
 };
 
-/**
- * @brief Clamps each component of a vector to the given range.
- *
- * @param v The vector to clamp.
- * @param min_val Minimum allowed value for each component.
- * @param max_val Maximum allowed value for each component.
- * @return Vec3 The component-wise clamped vector.
- */
-Vec3 clamp_vec3(const Vec3& v, float min_val, float max_val);
-
-
 struct Mat3 {
 	Vec3 rows[3];
 

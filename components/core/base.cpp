@@ -51,7 +51,7 @@ void Base::init_i2c() {
     bus_cfg.clk_source        = I2C_CLK_SRC_DEFAULT;
     bus_cfg.glitch_ignore_cnt = 7;
     bus_cfg.flags.enable_internal_pullup = true;
-    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_cfg, &bus));
+    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_cfg, &bus_));
 
 	vTaskDelay(pdMS_TO_TICKS(1000));
 	printf("Success\n");
@@ -61,9 +61,9 @@ void Base::init_servo_driver() {
 	// init servo driver and connect to master i2c bus
 	printf("Initializing PCA9685 .......... ");
 	pca9685::Pca9685::Config cfg;
-    cfg.bus         = this->bus;
+    cfg.bus         = this->bus_;
     cfg.pwm_freq_hz = ServoConfig::SERVO_FREQ;
-    ESP_ERROR_CHECK(this->servo_driver.init(cfg));
+    ESP_ERROR_CHECK(this->servo_driver_.init(cfg));
 
 	vTaskDelay(pdMS_TO_TICKS(1000));
 	printf("Success\n");
@@ -76,7 +76,7 @@ void Base::init_legs() {
 		this->legs_[i] = new Leg({
 			i,
 			*this,
-			this->servo_driver,
+			this->servo_driver_,
 			this->stabilizer_,
 		});
 	}
@@ -96,7 +96,7 @@ void Base::calibrate_servos() {
 	// 	servo_set_angle(this->servo_driver, i * 3, 100);
 	// }
 
-	servo_set_angle(this->servo_driver, 1, 30);
+	servo_set_angle(this->servo_driver_, 1, 30);
 
 }
 
@@ -105,8 +105,8 @@ void Base::init_imu() {
 	esp_log_level_set("mpu6050", ESP_LOG_ERROR);
 	printf("Initializing MPU6050 .......... ");
     mpu6050::Mpu6050::Config cfg;
-    cfg.bus  = this->bus;
-    ESP_ERROR_CHECK(this->imu.init(cfg));
+    cfg.bus  = this->bus_;
+    ESP_ERROR_CHECK(this->imu_.init(cfg));
 	vTaskDelay(pdMS_TO_TICKS(1000));
 	printf("Success\n");
 
@@ -114,8 +114,8 @@ void Base::init_imu() {
 	vTaskDelay(pdMS_TO_TICKS(500));
 	printf("Calibrating MPU6050 .......... ");
 
-    ESP_ERROR_CHECK(this->imu.calibrate_gyro(200));
-    ESP_ERROR_CHECK(this->imu.calibrate_level(200));
+    ESP_ERROR_CHECK(this->imu_.calibrate_gyro(200));
+    ESP_ERROR_CHECK(this->imu_.calibrate_level(200));
 
 	this->current_orientation = get_imu_angles();
 
@@ -132,7 +132,7 @@ void Base::update_legs() {
 
 void Base::update_imu() {
 	// try to update imu with new measurements
-	if (this->imu.get_angles(this->angles) != ESP_OK) {
+	if (this->imu_.get_angles(this->angles) != ESP_OK) {
 		printf("Failed to read IMU\n");
 		return;
 	}

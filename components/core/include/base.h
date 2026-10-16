@@ -36,9 +36,9 @@ class Base {
 		float dt_s;
 		Vec3 input;
 
-    	i2c_master_bus_handle_t bus;
-		pca9685::Pca9685 servo_driver;
-		mpu6050::Mpu6050 imu;
+    	i2c_master_bus_handle_t bus_;
+		pca9685::Pca9685 servo_driver_;
+		mpu6050::Mpu6050 imu_;
 		mpu6050::Angles angles;
 
 		Stabilizer stabilizer_;

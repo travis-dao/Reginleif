@@ -52,9 +52,9 @@ class ComplementaryFilter {
     public:
         /* alpha: gyro weight, 0..1 (typ. 0.95..0.99). Related to a time constant tau by
         * alpha = tau / (tau + dt); e.g. 0.98 at 200 Hz is tau of about 0.25 s. */
-        explicit ComplementaryFilter(float alpha = 0.98f) { set_alpha(alpha); }
+        explicit ComplementaryFilter(float alpha = 0.98f) { setAlpha(alpha); }
 
-        void  set_alpha(float alpha);   /* clamped to 0..1 */
+        void  setAlpha(float alpha);   /* clamped to 0..1 */
         float alpha() const { return alpha_; }
 
         /* Clears state (keeps alpha); the next sample reseeds from the accelerometer. */
@@ -106,37 +106,37 @@ class Mpu6050 {
         bool      initialized() const { return i2c_ != nullptr; }
 
         /* Low-level register access */
-        esp_err_t read_regs(uint8_t reg, uint8_t *buf, size_t len);
-        esp_err_t write_reg(uint8_t reg, uint8_t val);
+        esp_err_t readRegs(uint8_t reg, uint8_t *buf, size_t len);
+        esp_err_t writeReg(uint8_t reg, uint8_t val);
 
         /* Configuration */
-        esp_err_t set_accel_fs(AccelFs fs);
-        esp_err_t set_gyro_fs(GyroFs fs);
-        esp_err_t set_dlpf(Dlpf dlpf);
+        esp_err_t setAccelFs(AccelFs fs);
+        esp_err_t setGyroFs(GyroFs fs);
+        esp_err_t setDlpf(Dlpf dlpf);
         /* Rate = gyro_output_rate / (1 + SMPLRT_DIV), where gyro_output_rate is 8 kHz for
         * Dlpf::Hz260 and 1 kHz otherwise. Valid: 4..1000 Hz (32..8000 Hz with filter disabled). */
-        esp_err_t set_sample_rate(uint16_t hz);
+        esp_err_t setSampleRate(uint16_t hz);
         esp_err_t sleep(bool enable);
 
         /* Data */
-        esp_err_t read_raw(Raw &raw);     /* 14 bytes in one burst */
+        esp_err_t readRaw(Raw &raw);     /* 14 bytes in one burst */
         esp_err_t read(Data &d);         /* converted to physical units */
 
         /* Keep the board still. Gyro bias is subtracted in read(). */
-        esp_err_t calibrate_gyro(uint16_t samples);
-        esp_err_t calibrate_level(uint16_t samples);
+        esp_err_t calibrateGyro(uint16_t samples);
+        esp_err_t calibrateLevel(uint16_t samples);
 
         /* Angles */
-        esp_err_t read_angles(ComplementaryFilter &cf, Data *d = nullptr);   /* d may be nullptr */
+        esp_err_t readAngles(ComplementaryFilter &cf, Data *d = nullptr);   /* d may be nullptr */
         /* Reads the sensor and returns filtered roll/pitch using the built-in filter. Call at a
         * steady rate. Not thread-safe per object. */
-        esp_err_t get_angles(Angles &angles);
-        esp_err_t set_filter_alpha(float alpha);   /* 0..1 */
-        void      reset_angles() { cf_.reset(); } /* next getAngles() reseeds from the accelerometer */
+        esp_err_t getAngles(Angles &angles);
+        esp_err_t setFilterAlpha(float alpha);   /* 0..1 */
+        void      resetAngles() { cf_.reset(); } /* next getAngles() reseeds from the accelerometer */
 
     private:
         esp_err_t configure(const Config &cfg);
-        esp_err_t update_reg(uint8_t reg, uint8_t mask, uint8_t val);
+        esp_err_t updateReg(uint8_t reg, uint8_t mask, uint8_t val);
 
         i2c_master_dev_handle_t i2c_ = nullptr;
         AccelFs  accel_fs_ = AccelFs::G2;

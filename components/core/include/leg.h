@@ -43,9 +43,9 @@ class Leg {
 		Leg(const Config& cfg);
 
 		void update();
-		void update_state(const LegState state) { this->leg_state = state; }
+		void updateState(const LegState state) { this->leg_state = state; }
 
-		bool is_grounded() { return leg_state != SWING; }
+		bool isGrounded() { return leg_state != SWING; }
 
 	private:
 		float orientation_offset;
@@ -60,16 +60,16 @@ class Leg {
 		pca9685::Pca9685& pca;
 		Stabilizer& stabilizer_;
 
-		Theta3 ik(Vec3 target_foot_pos);
-		Theta3 invert_angles(const Theta3& angles);
-		Theta3 clamp_to_limits(const Theta3& angles) const;
-		void move_leg();
+		Theta3 IK(Vec3 target_foot_pos);
+		Theta3 invertAngles(const Theta3& angles);
+		Theta3 clampToLimits(const Theta3& angles) const;
+		void moveLeg();
 
-		void update_swing(const float step_length, const float step_height);
-		void update_stance();
-		void update_orientation();
+		void updateSwing(const float step_length, const float step_height);
+		void updateStance();
+		void updateOrientation();
 
-		void apply_pid_stabilization();
+		void applyStabilization();
 		void balance(const Vec3& angles);
 };
 

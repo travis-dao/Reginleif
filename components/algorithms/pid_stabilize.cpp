@@ -39,10 +39,10 @@ void Stabilizer::update(float dt_s, const Vec3& current_angles) {
 
     this->last_error = error;
 
-    this->rot_mat = get_rotation_matrix(compensation_angles);
+    this->rot_mat = getRotationMatrix(compensation_angles);
 }
 
-Mat3 Stabilizer::get_rotation_matrix(const Vec3& compensation_angles) {
+Mat3 Stabilizer::getRotationMatrix(const Vec3& compensation_angles) {
     Mat3 rotation_matrix_x {{
         {1, 								0, 							0},
         {0, cos(compensation_angles.x), -sin(compensation_angles.x)},

@@ -45,6 +45,7 @@ class LegController {
 
         void update(const float dt_s, const SharedData& shared_data);
         esp_err_t init(i2c_master_bus_handle_t bus);
+        
         bool isGrounded() { return this->grounded; }
 		int getCurrentAirborneLeg() { return this->current_airborne_leg; }
 

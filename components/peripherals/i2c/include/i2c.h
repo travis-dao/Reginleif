@@ -14,7 +14,6 @@ class I2CBus {
     public:
         esp_err_t init() {
             esp_log_level_set("gpio", ESP_LOG_WARN); // disable warnings
-            printf("Initializing I2C .......... ");
             i2c_master_bus_config_t cfg = {};
             cfg.i2c_port = I2C_PORT;
             cfg.sda_io_num = SDA_GPIO;
@@ -22,7 +21,7 @@ class I2CBus {
             cfg.clk_source = I2C_CLK_SRC_DEFAULT;
             cfg.glitch_ignore_cnt = 7;
             cfg.flags.enable_internal_pullup = true;
-            printf("Success\n");
+            printf("Initialized I2C Bus\n");
             return i2c_new_master_bus(&cfg, &bus_);
         };
         i2c_master_bus_handle_t handle() const { return bus_; }

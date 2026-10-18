@@ -25,7 +25,6 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus)
 
     // Initialize IMU and connect to I2C bus
     esp_log_level_set("mpu6050", ESP_LOG_ERROR);
-    printf("Initializing MPU6050 .......... ");
 
     mpu6050::Mpu6050::Config cfg;
     cfg.bus = bus;
@@ -36,11 +35,11 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus)
     }
 
     vTaskDelay(pdMS_TO_TICKS(1000));
-    printf("Success\n");
+    printf("Initialized IMU\n");
 
     // Calibrate IMU
     vTaskDelay(pdMS_TO_TICKS(500));
-    printf("Calibrating MPU6050 .......... ");
+    printf("Calibrating IMU, do not move\n");
 
     err = this->imu_.calibrateGyro(200);
     if (err != ESP_OK) {
@@ -53,21 +52,21 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus)
     }
 
     vTaskDelay(pdMS_TO_TICKS(1000));
-    printf("Success\n");
+    printf("IMU calibration complete\n");
 
     return ESP_OK;
 }
 
 esp_err_t Stabilizer::updateImu() {
-  // try to update imu with new measurements
-  if (this->imu_.getAngles(this->angles) != ESP_OK) {
-    printf("Failed to read IMU\n");
-    return ESP_FAIL;
-  }
+    // try to update imu with new measurements
+    if (this->imu_.getAngles(this->angles) != ESP_OK) {
+        printf("Failed to read IMU\n");
+        return ESP_FAIL;
+    }
 
-  // printf("roll: %.2f | pitch: %.2f\n", current_orientation.x,
-  // current_orientation.y);
-  return ESP_OK;
+    // printf("roll: %.2f | pitch: %.2f\n", current_orientation.x,
+    // current_orientation.y);
+    return ESP_OK;
 }
 
 void Stabilizer::updatePID(const float dt_s, const Vec3& current_angles) {

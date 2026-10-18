@@ -25,7 +25,7 @@ esp_err_t LegController::init(i2c_master_bus_handle_t bus)
         return e;
     }
 
-    printf("Initialized PCA9685\n");
+    printf("Servo driver initialized\n");
     vTaskDelay(pdMS_TO_TICKS(1000));
 
 
@@ -36,6 +36,8 @@ esp_err_t LegController::init(i2c_master_bus_handle_t bus)
             this->servo_driver_,
         });
     }
+
+    printf("LegController initialized\n");
 
     return ESP_OK;
 }

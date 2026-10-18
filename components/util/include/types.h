@@ -1,12 +1,14 @@
 #ifndef TYPES_h
 #define TYPES_h
 
+#include <type_traits>
+
 struct Theta3 {
   	float coxa, femur, tibia;
 };
 
 struct Vec3 {
-	float x, y, z;
+	float x, y, z = 0.0f;
 
 	Vec3 operator+(const Vec3& other) const;
 	Vec3& operator+=(const Vec3& other);
@@ -37,7 +39,7 @@ struct Vec3 {
 };
 
 struct Mat3 {
-	Vec3 rows[3];
+	Vec3 rows[3] = { {1,0,0}, {0,1,0}, {0,0,1} };
 
 	// Matrix * Vector
 	Vec3 operator*(const Vec3& v) const;
@@ -45,5 +47,12 @@ struct Mat3 {
 	// Matrix * Matrix
 	Mat3 operator*(const Mat3& o) const;
 };
+
+struct SharedData {
+	Mat3 rot_mat;
+	float current_speed;
+};
+
+static_assert(std::is_trivially_copyable_v<SharedData>, "SharedData goes through a FreeRTOS queue; must be trivially copyable");
 
 #endif

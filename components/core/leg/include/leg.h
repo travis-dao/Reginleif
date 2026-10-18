@@ -5,6 +5,13 @@
 #include "types.h"
 #include "pid_stabilize.h"
 
+namespace LegMeasurements {
+	constexpr float FEMUR_LENGTH = 122.64f;
+	constexpr float TIBIA_LENGTH = 34.66f + 147.03f;
+	constexpr float BODY_TO_COXA_X_OFFSET = 28.58f;
+	constexpr float BODY_TO_COXA_Z_OFFSET = -9.72f;
+}
+
 enum LegState {
  	HOLD, SWING, STANCE
 };
@@ -29,20 +36,16 @@ struct PositionState {
 	Vec3 last_grounded_pos;
 };
 
-class Base;
-
 class Leg {
 	public:
 		struct Config {
 			int id;
-			Base& base_;
 			pca9685::Pca9685& pca;
-			Stabilizer& stabilizer_;
 		};
 
 		Leg(const Config& cfg);
 
-		void update();
+		void update(float dt_s, const SharedData& shared_data);
 		void updateState(const LegState state) { this->leg_state = state; }
 
 		bool isGrounded() { return leg_state != SWING; }
@@ -56,20 +59,17 @@ class Leg {
 		PositionState pos_state;
 		Info info;
 
-		Base& base_;
 		pca9685::Pca9685& pca;
-		Stabilizer& stabilizer_;
 
 		Theta3 IK(Vec3 target_foot_pos);
 		Theta3 invertAngles(const Theta3& angles);
 		Theta3 clampToLimits(const Theta3& angles) const;
 		void moveLeg();
 
-		void updateSwing(const float step_length, const float step_height);
-		void updateStance();
-		void updateOrientation();
+		void updateSwing(const float dt_s, const float step_length, const float step_height);
+		void updateStance(const float dt_s, const SharedData& shared_data);
 
-		void applyStabilization();
+		void applyStabilization(const float dt_s, const Mat3& rot_mat);
 		void balance(const Vec3& angles);
 };
 

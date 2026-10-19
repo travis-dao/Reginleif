@@ -56,7 +56,7 @@ class Leg {
 
 		Theta3 IK(Vec3 target_foot_pos);
 		Theta3 invertAngles(const Theta3& angles);
-		Theta3 clampToLimits(const Theta3& angles) const;
+		Theta3 clampToLimits(const Theta3& angles);
 		void moveLeg();
 
 		void updateSwing(const float dt_s, const float step_length, const float step_height);

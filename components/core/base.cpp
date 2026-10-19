@@ -15,11 +15,10 @@ Base::Base() {
 }
 
 esp_err_t Base::init(i2c_master_bus_handle_t bus) {
-    printf("Initialization Sequence\n");
+    esp_err_t err = leg_controller_.init(bus);
 
-    esp_err_t e = leg_controller_.init(bus);
-    if (e != ESP_OK) {
-        return e;
+    if (err != ESP_OK) {
+        return err;
     }
 
     return ESP_OK;

@@ -22,7 +22,7 @@ esp_err_t LegController::init(i2c_master_bus_handle_t bus) {
         return e;
     }
 
-    printf("Servo driver initialized\n");
+    printf("Initialized Servo Driver\n");
     vTaskDelay(pdMS_TO_TICKS(1000));
 
 
@@ -34,7 +34,8 @@ esp_err_t LegController::init(i2c_master_bus_handle_t bus) {
         });
     }
 
-    printf("LegController initialized\n");
+    printf("Initialized LegController\n");
+    vTaskDelay(pdMS_TO_TICKS(500));
 
     return ESP_OK;
 }
@@ -50,12 +51,12 @@ void LegController::update(float dt_s, const SharedData& shared_data) {
 
     this->grounded = grounded;
 
-    if (this->grounded) {
-        this->current_airborne_leg = Movement::next_leg_gait[this->current_airborne_leg + 1];
-        this->legs_[this->current_airborne_leg]->setState(SWING);
-    }
+    // if (this->grounded) {
+    //     this->current_airborne_leg = Movement::next_leg_gait[this->current_airborne_leg + 1];
+    //     this->legs_[this->current_airborne_leg]->setState(SWING);
+    // }
 
-    for (int i = 0; i < 4; i++) {
-        legs_[i]->update(dt_s, shared_data);
-    }
+    // for (int i = 0; i < 4; i++) {
+    //     legs_[i]->update(dt_s, shared_data);
+    // }
 }

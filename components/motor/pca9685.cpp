@@ -9,10 +9,6 @@
 #include "freertos/semphr.h"
 #include "pca9685.h"
 
-namespace pca9685 {
-
-namespace {
-
 const char *const TAG = "pca9685";
 
 /* Registers */
@@ -46,8 +42,6 @@ class Guard {
     private:
         SemaphoreHandle_t m_;
 };
-
-}  // namespace
 
 /* ---------- lifecycle ---------- */
 
@@ -340,6 +334,4 @@ esp_err_t Pca9685::generalCallReset(i2c_master_bus_handle_t bus)
     i2c_master_bus_rm_device(dev);
     esp_rom_delay_us(1000);
     return ret;
-}
-
 }

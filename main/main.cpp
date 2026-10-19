@@ -21,8 +21,8 @@ struct StabilizerCtx {
 
 static void stabilizer_task(void *arg)
 {
-    printf("Stabilizer task started\n");
-    
+    // printf("Stabilizer task started\n");
+
     auto *ctx = static_cast<StabilizerCtx*>(arg);
 
     constexpr TickType_t period = pdMS_TO_TICKS(5);   // 200 Hz
@@ -53,7 +53,7 @@ static void stabilizer_task(void *arg)
 
 static void gait_task(void *arg)
 {
-    printf("Gait task started\n");
+    // printf("Gait task started\n");
 
     Base *base = static_cast<Base*>(arg);
 
@@ -77,6 +77,8 @@ static void gait_task(void *arg)
 
 extern "C" void app_main()
 {
+    printf("Initialization Sequence\n");
+
     static I2CBus i2c_;
     ESP_ERROR_CHECK(i2c_.init());
 

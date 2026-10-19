@@ -37,7 +37,7 @@ Theta3 Leg::invertAngles(const Theta3& angles) {
 	};
 }
 
-Theta3 Leg::clampToLimits(const Theta3& angles) const {
+Theta3 Leg::clampToLimits(const Theta3& angles) {
 	const LegServoLimits& lim = ServoConfig::limits[this->info.id];
 
 	return Theta3 {
@@ -93,7 +93,7 @@ void Leg::moveLeg() {
 	// check to flip angles for reverse mounted servos (leg side)
 	Theta3 target_angles = IK(adjusted_target_pos);
 
-	if (this->info.is_right_leg) {
+	if (!this->info.is_right_leg) {
 		target_angles = invertAngles(target_angles);
 	}
 
@@ -105,7 +105,7 @@ void Leg::moveLeg() {
 	servoSetAngle(this->pca, this->info.id * 3 + 1, target_angles.femur);
 	servoSetAngle(this->pca, this->info.id * 3 + 2, target_angles.tibia);
 	
-	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
+	printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// update members
 	this->angles = target_angles;

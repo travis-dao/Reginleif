@@ -1,7 +1,9 @@
 #ifndef I2C_h
 #define I2C_h
 
+#include "esp_err.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
 #include "mpu6050.h"
 #include "ism330.h"
 
@@ -21,8 +23,16 @@ class I2CBus {
             cfg.clk_source = I2C_CLK_SRC_DEFAULT;
             cfg.glitch_ignore_cnt = 7;
             cfg.flags.enable_internal_pullup = true;
+            esp_err_t err = i2c_new_master_bus(&cfg, &bus_);
+
+            if (err != ESP_OK) {
+                return err;
+            }
+
             printf("Initialized I2C Bus\n");
-            return i2c_new_master_bus(&cfg, &bus_);
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            
+            return ESP_OK;
         };
         i2c_master_bus_handle_t handle() const { return bus_; }
         

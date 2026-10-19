@@ -5,24 +5,21 @@
 #include "pid_stabilize.h"
 
 Stabilizer::Stabilizer(const Config& config) {
-    K_p = config.K_p;
-    K_i = config.K_i;
-    K_d = config.K_d;
+    this->K_p = config.K_p;
+    this->K_i = config.K_i;
+    this->K_d = config.K_d;
 
     this->integral_sum = Vec3 { 0.0f, 0.0f, 0.0f };
     this->last_error = Vec3 { 0.0f, 0.0f, 0.0f };
 
-    rot_mat = Mat3 {{
+    this->rot_mat = Mat3 {{
         {1, 0, 0},
         {0, 1, 0},
         {0, 0, 1}
     }};
 }
 
-esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus)
-{
-    this->bus_ = bus;
-
+esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
     // Initialize IMU and connect to I2C bus
     esp_log_level_set("mpu6050", ESP_LOG_ERROR);
 

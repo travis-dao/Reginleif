@@ -48,6 +48,6 @@ namespace ServoConfig {
 	};
 }
 
-esp_err_t servoSetAngle(pca9685::Pca9685 &pca, uint8_t ch, float deg);
+esp_err_t servoSetAngle(Pca9685 &pca, uint8_t ch, float deg);
 
 #endif

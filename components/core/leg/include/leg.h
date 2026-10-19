@@ -5,13 +5,6 @@
 #include "types.h"
 #include "pid_stabilize.h"
 
-namespace LegMeasurements {
-	constexpr float FEMUR_LENGTH = 122.64f;
-	constexpr float TIBIA_LENGTH = 34.66f + 147.03f;
-	constexpr float BODY_TO_COXA_X_OFFSET = 28.58f;
-	constexpr float BODY_TO_COXA_Z_OFFSET = -9.72f;
-}
-
 enum LegState {
  	HOLD, SWING, STANCE
 };
@@ -40,13 +33,13 @@ class Leg {
 	public:
 		struct Config {
 			int id;
-			pca9685::Pca9685& pca;
+			Pca9685& pca;
 		};
 
 		Leg(const Config& cfg);
 
 		void update(float dt_s, const SharedData& shared_data);
-		void updateState(const LegState state) { this->leg_state = state; }
+		void setState(const LegState state) { this->leg_state = state; }
 
 		bool isGrounded() { return leg_state != SWING; }
 
@@ -59,7 +52,7 @@ class Leg {
 		PositionState pos_state;
 		Info info;
 
-		pca9685::Pca9685& pca;
+		Pca9685& pca;
 
 		Theta3 IK(Vec3 target_foot_pos);
 		Theta3 invertAngles(const Theta3& angles);

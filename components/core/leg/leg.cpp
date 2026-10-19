@@ -6,6 +6,11 @@
 #include "servo.h"
 #include "pid_stabilize.h"
 
+constexpr float FEMUR_LENGTH = 122.64f;
+constexpr float TIBIA_LENGTH = 34.66f + 147.03f;
+constexpr float BODY_TO_COXA_X_OFFSET = 28.58f;
+constexpr float BODY_TO_COXA_Z_OFFSET = -9.72f;
+
 Leg::Leg(const Config& cfg): 
 	info(cfg.id),
 	pca(cfg.pca)
@@ -49,26 +54,26 @@ Theta3 Leg::IK(Vec3 target_foot_pos) {
 	float d = sqrt(target_foot_pos.x * target_foot_pos.x + target_foot_pos.y * target_foot_pos.y);
 
 	// adjust dis for offset to where coxa servo connects femur servo
-	float r = d - LegMeasurements::BODY_TO_COXA_X_OFFSET;
+	float r = d - BODY_TO_COXA_X_OFFSET;
 
 	// dis to target pos on x-z plane, basically dis from femur servo to tip of tibia
-	target_foot_pos.z += LegMeasurements::BODY_TO_COXA_Z_OFFSET;
+	target_foot_pos.z += BODY_TO_COXA_Z_OFFSET;
 	float c = sqrt(target_foot_pos.z * target_foot_pos.z + r * r);
 
 	float c_squared = c * c;
-	float a_squared = LegMeasurements::FEMUR_LENGTH * LegMeasurements::FEMUR_LENGTH;
-	float b_squared = LegMeasurements::TIBIA_LENGTH * LegMeasurements::TIBIA_LENGTH;
+	float a_squared = FEMUR_LENGTH * FEMUR_LENGTH;
+	float b_squared = TIBIA_LENGTH * TIBIA_LENGTH;
 
 	// calculate femur servo
 	float cos2 = std::clamp(
-		(a_squared + c_squared - b_squared) / (2 * LegMeasurements::FEMUR_LENGTH * c), 
+		(a_squared + c_squared - b_squared) / (2 * FEMUR_LENGTH * c), 
 		-1.0f, 
 		1.0f
 	);
 
 	// calculate tibia servo
 	float cos3 = std::clamp(
-		(a_squared + b_squared - c_squared) / (2 * LegMeasurements::FEMUR_LENGTH * LegMeasurements::TIBIA_LENGTH), 
+		(a_squared + b_squared - c_squared) / (2 * FEMUR_LENGTH * TIBIA_LENGTH), 
 		-1.0f, 
 		1.0f
 	);
@@ -125,7 +130,7 @@ void Leg::updateStance(const float dt_s, const SharedData& shared_data) {
 void Leg::updateSwing(const float dt_s, const float step_length, const float step_height) {
 	// swing done -> move to stance phase
 	if (this->phase >= 1.0f) {
-		updateState(STANCE);
+		setState(STANCE);
 		return;
 	}
 

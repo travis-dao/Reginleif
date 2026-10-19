@@ -11,8 +11,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
-namespace pca9685 {
-
 constexpr uint8_t  I2C_ADDR_DEFAULT = 0x40;
 constexpr uint8_t  NUM_CHANNELS     = 16;
 constexpr uint8_t  CHANNEL_ALL      = 16;        /* pseudo-channel: ALL_LED registers */
@@ -109,6 +107,4 @@ class Pca9685 {
         float                   freq_hz_    = 0.0f;
         int                     timeout_ms_ = 100;
         bool                    stagger_    = false;
-    };
-
-}  // namespace pca9685
+};

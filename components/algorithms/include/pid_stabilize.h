@@ -25,7 +25,6 @@ class Stabilizer {
         Vec3 getAngles() const { return Vec3 { angles.roll, -angles.pitch, 0.0f }; }
 
     private:
-        i2c_master_bus_handle_t bus_ = nullptr;
 		mpu6050::Mpu6050 imu_;
 		mpu6050::Angles angles;
 

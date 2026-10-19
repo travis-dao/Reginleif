@@ -50,9 +50,8 @@ class LegController {
 		int getCurrentAirborneLeg() { return this->current_airborne_leg; }
 
     private:
-        i2c_master_bus_handle_t bus_ = nullptr;
         Leg* legs_[4];
-		pca9685::Pca9685 servo_driver_;
+		Pca9685 servo_driver_;
 
 		int current_airborne_leg;
         bool grounded;

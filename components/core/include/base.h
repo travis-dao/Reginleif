@@ -14,19 +14,15 @@ class Base {
 		void update(const float dt_s, SharedData& shared_data);
 		
 		float getSpeed() { return this->current_speed; }
-		Vec3 getImuAngles() { return this->current_orientation; }
 		Vec3 getTargetOrientation() { return this->target_orientation; }
 
 	private:
 		float current_speed;
-		Vec3 current_orientation;
 		Vec3 target_orientation = Vec3 { 0.0f, 0.0f, 0.0f };
 
 		MoveState state;
 		LegController leg_controller_;
 		Vec3 input;
-
-		i2c_master_bus_handle_t bus_ = nullptr;
 
 		void updateInput(Vec3 input);
 		void updateSpeed(const float dt_s);

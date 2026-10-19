@@ -14,11 +14,8 @@ Base::Base() {
 	this->target_orientation = Vec3{0.0f, 0.0f, 0.0f};
 }
 
-esp_err_t Base::init(i2c_master_bus_handle_t bus)
-{
+esp_err_t Base::init(i2c_master_bus_handle_t bus) {
     printf("Initialization Sequence\n");
-
-    this->bus_ = bus;
 
     esp_err_t e = leg_controller_.init(bus);
     if (e != ESP_OK) {

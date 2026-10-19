@@ -10,13 +10,10 @@ LegController::LegController() {
     this->current_airborne_leg = -1;
 }
 
-esp_err_t LegController::init(i2c_master_bus_handle_t bus)
-{
-    this->bus_ = bus;
-
+esp_err_t LegController::init(i2c_master_bus_handle_t bus) {
     // Initialize servo driver and connect to master I2C bus
-    pca9685::Pca9685::Config cfg{};
-    cfg.bus = bus_;
+    Pca9685::Config cfg{};
+    cfg.bus = bus;
     cfg.pwm_freq_hz = ServoConfig::SERVO_FREQ;
     esp_err_t e = this->servo_driver_.init(cfg);
 
@@ -43,7 +40,7 @@ esp_err_t LegController::init(i2c_master_bus_handle_t bus)
 }
 
 void LegController::update(float dt_s, const SharedData& shared_data) {
-    grounded = true;
+    bool grounded = true;
 
     for (int i = 0; i < 4; i++) {
         if (!legs_[i]->isGrounded()) {
@@ -51,9 +48,11 @@ void LegController::update(float dt_s, const SharedData& shared_data) {
         }
     }
 
+    this->grounded = grounded;
+
     if (this->grounded) {
         this->current_airborne_leg = Movement::next_leg_gait[this->current_airborne_leg + 1];
-        this->legs_[this->current_airborne_leg]->updateState(SWING);
+        this->legs_[this->current_airborne_leg]->setState(SWING);
     }
 
     for (int i = 0; i < 4; i++) {

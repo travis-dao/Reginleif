@@ -25,8 +25,8 @@ class Stabilizer {
         Vec3 getAngles() const { return Vec3 { angles.roll, -angles.pitch, 0.0f }; }
 
     private:
-		mpu6050::Mpu6050 imu_;
-		mpu6050::Angles angles;
+		Mpu6050 imu_;
+		IMU::EulerAngles angles;
 
         float K_p;
         float K_i;

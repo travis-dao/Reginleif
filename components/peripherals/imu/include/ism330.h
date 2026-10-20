@@ -3,56 +3,16 @@
  * @brief I2C driver for the ISM330DHCX 6-DoF accelerometer + gyroscope (ESP-IDF, i2c_master API).
  *
  * init() attaches the device, verifies WHO_AM_I, resets the chip and applies the
- * configuration (full-scale ranges, output data rate), so the sensor no longer
+ * configuration (full-scale ranges, output IMU::data rate), so the sensor no longer
  * needs to be configured externally before sampling.
  */
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-
 #include "driver/i2c_master.h"
-#include "esp_err.h"
-
-namespace ism330 {
+#include "imu.h"
+#include "types.h"
 
 constexpr uint8_t ISM_I2C_ADDR_DEFAULT = 0x6A;   /* SDO/SA0 low; 0x6B when high */
-
-/* ---------- configuration enums ---------- */
-
-enum class AccelFs : uint8_t { G2 = 0, G4, G8, G16 };
-enum class GyroFs  : uint8_t { Dps125 = 0, Dps250, Dps500, Dps1000, Dps2000, Dps4000 };
-
-/* Output data rate, applied to both accel and gyro */
-enum class Odr : uint8_t {
-    Hz12_5 = 1, Hz26, Hz52, Hz104, Hz208, Hz417, Hz833, Hz1667, Hz3333, Hz6667
-};
-
-enum class FusionType : uint8_t { Mahony, Madgwick };
-
-/* ---------- data types ---------- */
-
-struct Vector {
-    float x, y, z;
-};
-
-struct Raw {
-    int16_t ax, ay, az;
-    int16_t gx, gy, gz;
-    int16_t temp;
-};
-
-struct Data {
-    float ax, ay, az;    /* g */
-    float gx, gy, gz;    /* deg/s */
-    float temp_c;        /* deg C */
-};
-
-struct Angles {
-    float roll;          /* deg */
-    float pitch;         /* deg */
-    float yaw;           /* deg; relative, drifts (no magnetometer) */
-};
 
 /* ---------- sensor fusion filters ---------- */
 
@@ -66,7 +26,7 @@ class MahonyFilter {
 
         void setGains(float kp, float ki);
         void reset();
-        void update(const Data &d, float dt);          /* d.g* in deg/s, d.a* in g */
+        void update(const IMU::Data &d, float dt);          /* d.g* in deg/s, d.a* in g */
 
         float roll()  const { return roll_; }
         float pitch() const { return pitch_; }
@@ -76,7 +36,7 @@ class MahonyFilter {
         void    setLastUs(int64_t us) { last_us_ = us; }
 
     private:
-        void seedFromAccel(const Data &d);
+        void seedFromAccel(const IMU::Data &d);
         void updateAngles();
 
         float two_kp_ = 0.2f, two_ki_ = 0.0f;
@@ -94,7 +54,7 @@ class MadgwickFilter {
 
         void setBeta(float beta);
         void reset();
-        void update(const Data &d, float dt);
+        void update(const IMU::Data &d, float dt);
 
         float roll()  const { return roll_; }
         float pitch() const { return pitch_; }
@@ -104,7 +64,7 @@ class MadgwickFilter {
         void    setLastUs(int64_t us) { last_us_ = us; }
 
     private:
-        void seedFromAccel(const Data &d);
+        void seedFromAccel(const IMU::Data &d);
         void updateAngles();
 
         float beta_ = 0.1f;
@@ -116,8 +76,19 @@ class MadgwickFilter {
 
 /* ---------- driver ---------- */
 
-class Ism330 {
+class Ism330: public IMU {
     public:
+        // config enums
+        enum class AccelFs : uint8_t { G2 = 0, G4, G8, G16 };
+        enum class GyroFs  : uint8_t { Dps125 = 0, Dps250, Dps500, Dps1000, Dps2000, Dps4000 };
+
+        /* Output IMU::data rate, applied to both accel and gyro */
+        enum class Odr : uint8_t {
+            Hz12_5 = 1, Hz26, Hz52, Hz104, Hz208, Hz417, Hz833, Hz1667, Hz3333, Hz6667
+        };
+
+        enum class FusionType : uint8_t { Mahony, Madgwick };
+
         struct Config {
             i2c_master_bus_handle_t bus = nullptr;   /**< Existing I2C master bus (required)       */
             uint8_t  addr          = 0;              /**< 7-bit address, 0 -> 0x6A                 */
@@ -131,6 +102,7 @@ class Ism330 {
             float    mahony_ki     = 0.0f;           /**< integral gain                            */
             float    madgwick_beta = 0.1f;           /**< algorithm gain                           */
         };
+        
 
         Ism330() = default;
         ~Ism330();
@@ -153,16 +125,16 @@ class Ism330 {
         esp_err_t setGyroFs(GyroFs fs);
         esp_err_t setOdr(Odr odr);
 
-        /* --- data --- */
+        /* --- IMU::data --- */
         /** One burst read of temperature, gyro and accel. Keeps the samples coherent. */
         esp_err_t readRaw(Raw &raw);
 
         /** Scaled to g and deg/s, with biases subtracted. */
         esp_err_t read(Data &d);
 
-        esp_err_t readAccel(Vector &accel);
-        esp_err_t readGyro(Vector &gyro);
-        esp_err_t readVectors(Vector &accel, Vector &gyro);   /* replaces getAGVectors() */
+        esp_err_t readAccel(Vec3 &accel);
+        esp_err_t readGyro(Vec3 &gyro);
+        esp_err_t readVectors(Vec3 &accel, Vec3 &gyro);   /* replaces getAGVectors() */
 
         /** Temperature relative to 25 C (reads 0 at 25 C): this is how the chip is calibrated. */
         esp_err_t readTemperature(float &temp_offset_c);
@@ -180,7 +152,7 @@ class Ism330 {
 
         /* --- angle estimate (call at a steady rate) --- */
         /** Reads the sensor, runs the selected filter and returns the Euler angles. */
-        esp_err_t getAngles(Angles &angles);
+        esp_err_t getAngles(EulerAngles &angles);
 
         void resetAngles();
         void setFusion(FusionType type);
@@ -211,5 +183,3 @@ class Ism330 {
         MahonyFilter   mahony_;
         MadgwickFilter madgwick_;
 };
-
-}

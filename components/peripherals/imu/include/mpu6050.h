@@ -3,49 +3,12 @@
  */
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-
-#include "esp_err.h"
 #include "driver/i2c_master.h"
-
-namespace mpu6050 {
+#include "imu.h"
 
 /* 7-bit I2C addresses (selected by the AD0 pin) */
 constexpr uint8_t ADDR_AD0_LOW  = 0x68;
 constexpr uint8_t ADDR_AD0_HIGH = 0x69;
-
-enum class AccelFs : uint8_t { G2 = 0, G4 = 1, G8 = 2, G16 = 3 };
-enum class GyroFs  : uint8_t { Dps250 = 0, Dps500 = 1, Dps1000 = 2, Dps2000 = 3 };
-
-/* Digital low-pass filter setting (CONFIG register DLPF_CFG).
- * Hz260 disables the filter and raises the gyro output rate to 8 kHz. */
-enum class Dlpf : uint8_t {
-    Hz260 = 0,   /* accel 260 Hz / gyro 256 Hz, gyro rate 8 kHz */
-    Hz184 = 1,   /* accel 184 Hz / gyro 188 Hz, gyro rate 1 kHz */
-    Hz94  = 2,
-    Hz44  = 3,
-    Hz21  = 4,
-    Hz10  = 5,
-    Hz5   = 6,
-};
-
-struct Raw {
-    int16_t ax, ay, az;
-    int16_t temp;
-    int16_t gx, gy, gz;
-};
-
-struct Data {
-    float ax, ay, az;      /* g */
-    float gx, gy, gz;      /* deg/s (gyro bias already removed) */
-    float temp_c;          /* degrees Celsius */
-};
-
-struct Angles {
-    float roll;            /* degrees, rotation about X */
-    float pitch;           /* degrees, rotation about Y */
-};
 
 /* Complementary filter for roll/pitch. Usable standalone or via Mpu6050::getAngles(). */
 class ComplementaryFilter {
@@ -63,7 +26,7 @@ class ComplementaryFilter {
         /* One filter step on an already-read sample (pure math, no I2C). Use this if you
         * manage timing yourself. The first call seeds the angles from the accelerometer.
         * dt is seconds since the previous update. */
-        void update(const Data &d, float dt);
+        void update(const IMU::Data &d, float dt);
 
         float roll() const  { return roll_; }
         float pitch() const { return pitch_; }
@@ -80,8 +43,24 @@ class ComplementaryFilter {
         int64_t last_us_ = 0;
 };
 
-class Mpu6050 {
+class Mpu6050: public IMU {
     public:
+        // config enums
+        enum class AccelFs : uint8_t { G2 = 0, G4 = 1, G8 = 2, G16 = 3 };
+        enum class GyroFs  : uint8_t { Dps250 = 0, Dps500 = 1, Dps1000 = 2, Dps2000 = 3 };
+
+        /* Digital low-pass filter setting (CONFIG register DLPF_CFG).
+        * Hz260 disables the filter and raises the gyro output rate to 8 kHz. */
+        enum class Dlpf : uint8_t {
+            Hz260 = 0,   /* accel 260 Hz / gyro 256 Hz, gyro rate 8 kHz */
+            Hz184 = 1,   /* accel 184 Hz / gyro 188 Hz, gyro rate 1 kHz */
+            Hz94  = 2,
+            Hz44  = 3,
+            Hz21  = 4,
+            Hz10  = 5,
+            Hz5   = 6,
+        };
+        
         struct Config {
             i2c_master_bus_handle_t bus = nullptr;   /* An already-created I2C master bus */
             uint8_t  addr           = ADDR_AD0_LOW;
@@ -130,7 +109,7 @@ class Mpu6050 {
         esp_err_t readAngles(ComplementaryFilter &cf, Data *d = nullptr);   /* d may be nullptr */
         /* Reads the sensor and returns filtered roll/pitch using the built-in filter. Call at a
         * steady rate. Not thread-safe per object. */
-        esp_err_t getAngles(Angles &angles);
+        esp_err_t getAngles(EulerAngles &angles);
         esp_err_t setFilterAlpha(float alpha);   /* 0..1 */
         void      resetAngles() { cf_.reset(); } /* next getAngles() reseeds from the accelerometer */
 
@@ -150,5 +129,3 @@ class Mpu6050 {
         float    roll_off_  = 0.0f;                    /* deg: attitude of the "zero" pose */
         float    pitch_off_ = 0.0f;
 };
-
-}

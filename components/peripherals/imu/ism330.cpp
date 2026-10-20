@@ -10,10 +10,6 @@
 #include "freertos/task.h"
 #include "ism330.h"
 
-namespace ism330 {
-
-namespace {
-
 const char *const TAG = "ism330";
 
 /* Registers */
@@ -66,7 +62,7 @@ inline int16_t le16(const uint8_t *p)
 
 inline float invSqrt(float x) { return 1.0f / std::sqrt(x); }
 
-inline bool accelValid(const Data &d)
+inline bool accelValid(const IMU::Data &d)
 {
     const float norm = std::sqrt(d.ax * d.ax + d.ay * d.ay + d.az * d.az);
     return norm > ACCEL_MIN_G && norm < ACCEL_MAX_G;
@@ -78,7 +74,7 @@ inline TickType_t periodTicks(uint16_t hz)
 }
 
 /* Quaternion for the roll/pitch implied by gravity, yaw = 0 */
-void quatFromAccel(const Data &d, float &q0, float &q1, float &q2, float &q3)
+void quatFromAccel(const IMU::Data &d, float &q0, float &q1, float &q2, float &q3)
 {
     const float norm = std::sqrt(d.ax * d.ax + d.ay * d.ay + d.az * d.az);
     const float ax = d.ax / norm, ay = d.ay / norm, az = d.az / norm;
@@ -104,7 +100,7 @@ void quatToEuler(float q0, float q1, float q2, float q3, float &roll, float &pit
 
 /* Time the filter since its last call, update it, and copy out the angles */
 template <typename Filter>
-void stepFilter(Filter &f, const Data &d, Angles &out)
+void stepFilter(Filter &f, const IMU::IMU::Data &d, IMU::EulerAngles &out)
 {
     const int64_t now = esp_timer_get_time();
     const float dt = f.lastUs() ? (now - f.lastUs()) / 1e6f : 0.0f;
@@ -115,8 +111,6 @@ void stepFilter(Filter &f, const Data &d, Angles &out)
     out.pitch = f.pitch();
     out.yaw   = f.yaw();
 }
-
-}  // namespace
 
 /* ---------- Mahony filter ---------- */
 
@@ -135,7 +129,7 @@ void MahonyFilter::reset()
     last_us_ = 0;
 }
 
-void MahonyFilter::seedFromAccel(const Data &d)
+void MahonyFilter::seedFromAccel(const IMU::Data &d)
 {
     quatFromAccel(d, q0_, q1_, q2_, q3_);
     ix_ = iy_ = iz_ = 0.0f;
@@ -148,7 +142,7 @@ void MahonyFilter::updateAngles()
     quatToEuler(q0_, q1_, q2_, q3_, roll_, pitch_, yaw_);
 }
 
-void MahonyFilter::update(const Data &d, float dt)
+void MahonyFilter::update(const IMU::Data &d, float dt)
 {
     const bool accel_ok = accelValid(d);
 
@@ -225,7 +219,7 @@ void MadgwickFilter::reset()
     last_us_ = 0;
 }
 
-void MadgwickFilter::seedFromAccel(const Data &d)
+void MadgwickFilter::seedFromAccel(const IMU::Data &d)
 {
     quatFromAccel(d, q0_, q1_, q2_, q3_);
     seeded_ = true;
@@ -237,7 +231,7 @@ void MadgwickFilter::updateAngles()
     quatToEuler(q0_, q1_, q2_, q3_, roll_, pitch_, yaw_);
 }
 
-void MadgwickFilter::update(const Data &d, float dt)
+void MadgwickFilter::update(const IMU::Data &d, float dt)
 {
     const bool accel_ok = accelValid(d);
 
@@ -462,7 +456,7 @@ esp_err_t Ism330::readRaw(Raw &raw)
     return ESP_OK;
 }
 
-esp_err_t Ism330::read(Data &d)
+esp_err_t Ism330::read(IMU::Data &d)
 {
     Raw r;
     ESP_RETURN_ON_ERROR(readRaw(r), TAG, "read raw");
@@ -483,7 +477,7 @@ esp_err_t Ism330::read(Data &d)
     return ESP_OK;
 }
 
-esp_err_t Ism330::readAccel(Vector &accel)
+esp_err_t Ism330::readAccel(Vec3 &accel)
 {
     Data d;
     ESP_RETURN_ON_ERROR(read(d), TAG, "read");
@@ -491,7 +485,7 @@ esp_err_t Ism330::readAccel(Vector &accel)
     return ESP_OK;
 }
 
-esp_err_t Ism330::readGyro(Vector &gyro)
+esp_err_t Ism330::readGyro(Vec3 &gyro)
 {
     Data d;
     ESP_RETURN_ON_ERROR(read(d), TAG, "read");
@@ -499,7 +493,7 @@ esp_err_t Ism330::readGyro(Vector &gyro)
     return ESP_OK;
 }
 
-esp_err_t Ism330::readVectors(Vector &accel, Vector &gyro)
+esp_err_t Ism330::readVectors(Vec3 &accel, Vec3 &gyro)
 {
     Data d;
     ESP_RETURN_ON_ERROR(read(d), TAG, "read");
@@ -595,7 +589,7 @@ esp_err_t Ism330::calibrate(uint16_t samples)
 
 /* ---------- angle estimate ---------- */
 
-esp_err_t Ism330::getAngles(Angles &angles)
+esp_err_t Ism330::getAngles(EulerAngles &angles)
 {
     ESP_RETURN_ON_FALSE(i2c_, ESP_ERR_INVALID_STATE, TAG, "not initialized");
 
@@ -639,6 +633,4 @@ esp_err_t Ism330::setMadgwickBeta(float beta)
     ESP_RETURN_ON_FALSE(beta >= 0.0f, ESP_ERR_INVALID_ARG, TAG, "bad args");
     madgwick_.setBeta(beta);
     return ESP_OK;
-}
-
 }

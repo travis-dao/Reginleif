@@ -23,7 +23,7 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
     // Initialize IMU and connect to I2C bus
     esp_log_level_set("mpu6050", ESP_LOG_ERROR);
 
-    mpu6050::Mpu6050::Config cfg;
+    Mpu6050::Config cfg;
     cfg.bus = bus;
 
     esp_err_t err = this->imu_.init(cfg);

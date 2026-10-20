@@ -9,10 +9,6 @@
 #include "freertos/task.h"
 #include "mpu6050.h"
 
-namespace mpu6050 {
-
-namespace {
-
 const char *const TAG = "mpu6050";
 
 /* Registers */
@@ -52,8 +48,6 @@ inline int16_t be16(const uint8_t *p)
     return static_cast<int16_t>((static_cast<uint16_t>(p[0]) << 8) | p[1]);
 }
 
-}  // namespace
-
 /* ---------- complementary filter ---------- */
 
 void ComplementaryFilter::setAlpha(float alpha)
@@ -71,7 +65,7 @@ void ComplementaryFilter::reset()
     last_us_ = 0;
 }
 
-void ComplementaryFilter::update(const Data &d, float dt)
+void ComplementaryFilter::update(const IMU::Data &d, float dt)
 {
     /* Angles implied by gravity alone */
     const float norm = std::sqrt(d.ax * d.ax + d.ay * d.ay + d.az * d.az);
@@ -355,11 +349,12 @@ esp_err_t Mpu6050::readAngles(ComplementaryFilter &cf, Data *d)
     return ESP_OK;
 }
 
-esp_err_t Mpu6050::getAngles(Angles &angles)
+esp_err_t Mpu6050::getAngles(EulerAngles &angles)
 {
     ESP_RETURN_ON_ERROR(readAngles(cf_, nullptr), TAG, "update angles");
     angles.roll  = cf_.roll()  - roll_off_;
     angles.pitch = cf_.pitch() - pitch_off_;
+    angles.yaw = 0.0f;
     return ESP_OK;
 }
 
@@ -368,6 +363,4 @@ esp_err_t Mpu6050::setFilterAlpha(float alpha)
     ESP_RETURN_ON_FALSE(alpha >= 0.0f && alpha <= 1.0f, ESP_ERR_INVALID_ARG, TAG, "bad args");
     cf_.setAlpha(alpha);
     return ESP_OK;
-}
-
 }

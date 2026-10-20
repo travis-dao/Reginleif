@@ -56,7 +56,17 @@ void LegController::update(float dt_s, const SharedData& shared_data) {
     //     this->legs_[this->current_airborne_leg]->setState(SWING);
     // }
 
-    // for (int i = 0; i < 4; i++) {
-    //     legs_[i]->update(dt_s, shared_data);
-    // }
+    // update individual legs
+    for (int i = 0; i < 4; i++) {
+        legs_[i]->update(dt_s, shared_data, *target_angles[i]);
+    }
+
+    // write target angles to burst write buffer
+    for (int i = 0; i < 4; ++i) {
+        target_angles_buffer[i * 3 + 0] = target_angles[i]->coxa;
+        target_angles_buffer[i * 3 + 1] = target_angles[i]->femur;
+        target_angles_buffer[i * 3 + 2] = target_angles[i]->tibia;
+    }
+
+    servoSetAngles(servo_driver_, target_angles_buffer, 12);
 }

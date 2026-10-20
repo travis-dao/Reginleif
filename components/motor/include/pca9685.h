@@ -86,6 +86,11 @@ class Pca9685 {
         */
         static esp_err_t generalCallReset(i2c_master_bus_handle_t bus);
 
+        // burst write
+        void computeOnOff(uint8_t ch, uint16_t duty, uint16_t &on, uint16_t &off) const;
+        esp_err_t setDuties(uint8_t first_ch, const uint16_t *duty, size_t count);
+
+
     private:
         esp_err_t configure(const Config &cfg);
         void      release();

@@ -53,6 +53,9 @@ class LegController {
         Leg* legs_[4];
 		Pca9685 servo_driver_;
 
+        Theta3* target_angles[4];
+        float target_angles_buffer[12];
+
 		int current_airborne_leg;
         bool grounded;
 };

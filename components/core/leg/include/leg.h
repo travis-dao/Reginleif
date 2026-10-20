@@ -38,7 +38,7 @@ class Leg {
 
 		Leg(const Config& cfg);
 
-		void update(float dt_s, const SharedData& shared_data);
+		void update(float dt_s, const SharedData& shared_data, Theta3& out_target_angles);
 		void setState(const LegState state) { this->leg_state = state; }
 
 		bool isGrounded() { return leg_state != SWING; }

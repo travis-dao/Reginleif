@@ -49,5 +49,6 @@ namespace ServoConfig {
 }
 
 esp_err_t servoSetAngle(Pca9685 &pca, uint8_t ch, float deg);
+esp_err_t servoSetAngles(Pca9685 &pca, const float *deg, size_t count);
 
 #endif

@@ -226,19 +226,38 @@ esp_err_t Pca9685::writeChannel(uint8_t ch, uint16_t on, uint16_t off)
     return regWrite(reg, d, sizeof(d));
 }
 
-esp_err_t Pca9685::writeDuty(uint8_t ch, uint16_t duty)
+// esp_err_t Pca9685::writeDuty(uint8_t ch, uint16_t duty)
+// {
+//     uint16_t on, off;
+//     if (duty == 0) {
+//         on  = 0;
+//         off = MAX_COUNT;                       /* full off */
+//     } else if (duty >= MAX_COUNT) {
+//         on  = MAX_COUNT;                       /* full on  */
+//         off = 0;
+//     } else {
+//         on  = (stagger_ && ch < NUM_CHANNELS) ? static_cast<uint16_t>(ch * 256) : 0;
+//         off = static_cast<uint16_t>((on + duty) & 0x0FFF);
+//     }
+//     return writeChannel(ch, on, off);
+// }
+
+void Pca9685::computeOnOff(uint8_t ch, uint16_t duty, uint16_t &on, uint16_t &off) const
 {
-    uint16_t on, off;
     if (duty == 0) {
-        on  = 0;
-        off = MAX_COUNT;                       /* full off */
+        on = 0;         off = MAX_COUNT;              /* full off */
     } else if (duty >= MAX_COUNT) {
-        on  = MAX_COUNT;                       /* full on  */
-        off = 0;
+        on = MAX_COUNT; off = 0;                      /* full on  */
     } else {
         on  = (stagger_ && ch < NUM_CHANNELS) ? static_cast<uint16_t>(ch * 256) : 0;
         off = static_cast<uint16_t>((on + duty) & 0x0FFF);
     }
+}
+
+esp_err_t Pca9685::writeDuty(uint8_t ch, uint16_t duty)
+{
+    uint16_t on, off;
+    computeOnOff(ch, duty, on, off);
     return writeChannel(ch, on, off);
 }
 
@@ -334,4 +353,28 @@ esp_err_t Pca9685::generalCallReset(i2c_master_bus_handle_t bus)
     i2c_master_bus_rm_device(dev);
     esp_rom_delay_us(1000);
     return ret;
+}
+
+/* ---------- burst write ---------- */
+esp_err_t Pca9685::setDuties(uint8_t first_ch, const uint16_t *duty, size_t count)
+{
+    ESP_RETURN_ON_FALSE(dev_, ESP_ERR_INVALID_STATE, TAG, "not initialized");
+    ESP_RETURN_ON_FALSE(duty && count > 0 && first_ch + count <= NUM_CHANNELS,
+                        ESP_ERR_INVALID_ARG, TAG, "bad args");
+
+    uint8_t buf[1 + 4 * NUM_CHANNELS];
+    buf[0] = static_cast<uint8_t>(REG_LED0_ON_L + 4 * first_ch);
+
+    for (size_t i = 0; i < count; i++) {
+        ESP_RETURN_ON_FALSE(duty[i] <= MAX_COUNT, ESP_ERR_INVALID_ARG, TAG,
+                            "ch %u duty out of range", (unsigned)(first_ch + i));
+        uint16_t on, off;
+        computeOnOff(static_cast<uint8_t>(first_ch + i), duty[i], on, off);
+        uint8_t *p = &buf[1 + 4 * i];
+        p[0] = on & 0xFF;   p[1] = (on  >> 8) & 0x1F;
+        p[2] = off & 0xFF;  p[3] = (off >> 8) & 0x1F;
+    }
+
+    Guard g(lock_);
+    return i2c_master_transmit(dev_, buf, 1 + 4 * count, timeout_ms_);
 }

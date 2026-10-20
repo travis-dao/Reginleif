@@ -87,6 +87,7 @@ Theta3 Leg::IK(Vec3 target_foot_pos) {
 }
 
 void Leg::moveLeg() {
+	// flip y pos
 	Vec3 adjusted_target_pos = this->pos_state.target_pos;
 	adjusted_target_pos.y *= this->info.is_right_leg ? -1.0f : 1.0f;
 
@@ -101,15 +102,14 @@ void Leg::moveLeg() {
 	target_angles = clampToLimits(target_angles);
 
 	// move servos
-	servoSetAngle(this->pca, this->info.id * 3, target_angles.coxa);
-	servoSetAngle(this->pca, this->info.id * 3 + 1, target_angles.femur);
-	servoSetAngle(this->pca, this->info.id * 3 + 2, target_angles.tibia);
+	// servoSetAngle(this->pca, this->info.id * 3, target_angles.coxa);
+	// servoSetAngle(this->pca, this->info.id * 3 + 1, target_angles.femur);
+	// servoSetAngle(this->pca, this->info.id * 3 + 2, target_angles.tibia);
 	
 	printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->info.id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 	// update members
 	this->angles = target_angles;
-	this->pos_state.curr_pos = this->pos_state.target_pos;
 }
 
 void Leg::applyStabilization(const float dt_s, const Mat3& rot_mat) {
@@ -146,7 +146,7 @@ void Leg::updateSwing(const float dt_s, const float step_length, const float ste
 	if (this->phase > 1.0f) this->phase = 1.0f;
 }
 
-void Leg::update(const float dt_s, const SharedData& shared_data) {
+void Leg::update(const float dt_s, const SharedData& shared_data, Theta3& out_target_angles) {
 	applyStabilization(dt_s, shared_data.rot_mat);
 
 	// 2. update target pos based on state
@@ -169,6 +169,10 @@ void Leg::update(const float dt_s, const SharedData& shared_data) {
 
 	// 4. move servos based on target pos
 	moveLeg();
+
+	// update variables
+	this->pos_state.curr_pos = this->pos_state.target_pos;
+	out_target_angles = this->angles;
 }
 
 void Leg::balance(const Vec3& angles) {

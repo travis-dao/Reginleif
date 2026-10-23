@@ -1,3 +1,4 @@
+#include <cmath>
 #include <math.h>
 #include <algorithm>
 
@@ -5,6 +6,7 @@
 #include "base.h"
 #include "servo.h"
 #include "pid_stabilize.h"
+#include "types.h"
 
 constexpr float FEMUR_LENGTH = 122.64f;
 constexpr float TIBIA_LENGTH = 34.66f + 147.03f;
@@ -79,9 +81,9 @@ Theta3 Leg::IK(Vec3 target_foot_pos) {
 	);
 
 	// update output
-	new_angles.coxa = atan2(target_foot_pos.y, target_foot_pos.x) * 180.0f / M_PI; // coxa
-	new_angles.femur = atan2(r, -target_foot_pos.z) * 180.0f / M_PI + acos(cos2) * 180.0f / M_PI; // femur
-	new_angles.tibia = acos(cos3) * 180.0f / M_PI; // tibia
+	new_angles.coxa = atan2f(target_foot_pos.y, target_foot_pos.x) * RAD_TO_DEG; // coxa
+	new_angles.femur = atan2f(r, -target_foot_pos.z) * RAD_TO_DEG + acosf(cos2) * RAD_TO_DEG; // femur
+	new_angles.tibia = acosf(cos3) * RAD_TO_DEG; // tibia
 
 	return new_angles;
 }
@@ -135,11 +137,11 @@ void Leg::updateSwing(const float dt_s, const float step_length, const float ste
 	}
 
 	// x = velocity-based
-	float velocity_x = (M_PI * step_length / (2.0f * Movement::SWING_DURATION_S)) * sin(M_PI * this->phase);
+	float velocity_x = (PI * step_length / (2.0f * Movement::SWING_DURATION_S)) * sinf(PI * this->phase);
 	this->pos_state.target_pos.x += velocity_x * dt_s;
 
 	// z = position-based, add on top of whatever update_orientation() just set
-	this->pos_state.target_pos.z = this->pos_state.base_neutral_pos.z + step_height * sin(M_PI * this->phase);
+	this->pos_state.target_pos.z = this->pos_state.base_neutral_pos.z + step_height * sinf(PI * this->phase);
 
 	// advance phase
 	this->phase += dt_s / Movement::SWING_DURATION_S;
@@ -180,8 +182,8 @@ void Leg::balance(const Vec3& angles) {
 	if (this->leg_state == SWING) return;
 
 	// 3d plane method
-	float A = -tan(angles.y * M_PI / 180.0f);
-	float B = tan(angles.x * M_PI / 180.0f);
+	float A = -tan(angles.y * DEG_TO_RAD);
+	float B = tan(angles.x * DEG_TO_RAD);
 
 	float offset = -(A * this->pos_state.true_neutral_pos.x + B * this->pos_state.true_neutral_pos.y);
 

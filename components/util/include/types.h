@@ -1,7 +1,11 @@
 #ifndef TYPES_h
 #define TYPES_h
 
-#include <type_traits>
+#include <math.h>
+
+constexpr float RAD_TO_DEG = static_cast<float>(180.0f / M_PI);
+constexpr float DEG_TO_RAD = static_cast<float>(M_PI / 180.0f);
+constexpr float PI = static_cast<float>(M_PI);
 
 struct Theta3 {
   	float coxa, femur, tibia;
@@ -39,7 +43,7 @@ struct Vec3 {
 };
 
 struct Mat3 {
-	Vec3 rows[3] = { {1,0,0}, {0,1,0}, {0,0,1} };
+	Vec3 rows[3] = { {1,0,0}, {0,1,0}, {0,0,1} }; // identity matrix by default
 
 	// Matrix * Vector
 	Vec3 operator*(const Vec3& v) const;

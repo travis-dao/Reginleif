@@ -55,6 +55,7 @@ struct Mat3 {
 struct SharedData {
 	Mat3 rot_mat;
 	float current_speed;
+	int64_t stamp_us = 0;
 };
 
 static_assert(std::is_trivially_copyable_v<SharedData>, "SharedData goes through a FreeRTOS queue; must be trivially copyable");

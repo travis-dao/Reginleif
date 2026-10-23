@@ -153,6 +153,7 @@ class Ism330: public IMU {
         /* --- angle estimate (call at a steady rate) --- */
         /** Reads the sensor, runs the selected filter and returns the Euler angles. */
         esp_err_t getAngles(EulerAngles &angles);
+        Vec3 lastGyro() const { return last_gyro_; }
 
         void resetAngles();
         void setFusion(FusionType type);
@@ -182,4 +183,7 @@ class Ism330: public IMU {
         FusionType     fusion_ = FusionType::Mahony;
         MahonyFilter   mahony_;
         MadgwickFilter madgwick_;
+
+
+        Vec3 last_gyro_{0.0f, 0.0f, 0.0f};
 };

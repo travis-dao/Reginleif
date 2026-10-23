@@ -1,8 +1,14 @@
+#include <algorithm>
 #include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
+#include "ism330.h"
+#include "types.h"
 
 #include "pid_stabilize.h"
+
+static constexpr float MAX_COMP_DEG = 15.0f;   // max body-tilt correction, per axis
+static constexpr float I_MAX        = 10.0f;   // max integral_sum in deg*s
 
 Stabilizer::Stabilizer(const Config& config) {
     this->K_p = config.K_p;
@@ -10,7 +16,6 @@ Stabilizer::Stabilizer(const Config& config) {
     this->K_d = config.K_d;
 
     this->integral_sum = Vec3 { 0.0f, 0.0f, 0.0f };
-    this->last_error = Vec3 { 0.0f, 0.0f, 0.0f };
 
     this->rot_mat = Mat3 {{
         {1, 0, 0},
@@ -23,8 +28,13 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
     // Initialize IMU and connect to I2C bus
     esp_log_level_set("mpu6050", ESP_LOG_ERROR);
 
-    Mpu6050::Config cfg;
-    cfg.bus = bus;
+    Ism330::Config cfg;
+    cfg.bus            = bus;
+    cfg.odr            = Ism330::Odr::Hz417;
+    cfg.sample_rate_hz = 200;
+    cfg.fusion         = Ism330::FusionType::Mahony;
+    cfg.mahony_kp      = 0.5f;   // TODO -- tune btwn 0.1 to 1.0
+    cfg.mahony_kp      = 0.0f;
 
     esp_err_t err = this->imu_.init(cfg);
     if (err != ESP_OK) {
@@ -38,91 +48,62 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
     vTaskDelay(pdMS_TO_TICKS(500));
     printf("Calibrating IMU, do not move\n");
 
-    err = this->imu_.calibrateGyro(200);
+    err = this->imu_.calibrate(200);
     if (err != ESP_OK) {
         return err;
     }
 
-    err = this->imu_.calibrateLevel(200);
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(1000));
     printf("IMU calibration complete\n");
 
     return ESP_OK;
 }
 
 esp_err_t Stabilizer::updateImu() {
-    // try to update imu with new measurements
-    if (this->imu_.getAngles(this->angles) != ESP_OK) {
+    if (imu_.getAngles(angles) != ESP_OK) {
         printf("Failed to read IMU\n");
         return ESP_FAIL;
     }
-
-    // printf("roll: %.2f | pitch: %.2f\n", current_orientation.x,
-    // current_orientation.y);
+    Vec3 g = imu_.lastGyro();
+    gyro_dps_ = Vec3 { g.x, -g.y, 0.0f };  // negate y to match the negated pitch angle
     return ESP_OK;
 }
 
-void Stabilizer::updatePID(const float dt_s, const Vec3& current_angles) {
+void Stabilizer::updatePID(float dt_s, const Vec3& angles, const Vec3& gyro_dps) {
+    if (dt_s <= 0.0f) return;
 
-    // error
-    Vec3 error = target_angles - current_angles;
+    Vec3 error = target_angles - angles;
+    error.z = 0.0f; // no yaw feedback
 
-    // pid stuff
-    Vec3 proportional_term = error * K_p;
+    integral_sum = integral_sum + error * dt_s;
+    integral_sum.x = std::clamp(integral_sum.x, -I_MAX, I_MAX);
+    integral_sum.y = std::clamp(integral_sum.y, -I_MAX, I_MAX);
 
-    this->integral_sum = this->integral_sum + (error * dt_s);
+    Vec3 d_term = (gyro_dps * -1.0f) * K_d;   // gyro measurement = change in deg/sec = derivative
 
-    Vec3 integral_term = this->integral_sum * K_i;
+    Vec3 comp_deg = error * K_p + integral_sum * K_i + d_term;
+    comp_deg.x = std::clamp(comp_deg.x, -MAX_COMP_DEG, MAX_COMP_DEG);
+    comp_deg.y = std::clamp(comp_deg.y, -MAX_COMP_DEG, MAX_COMP_DEG);
+    comp_deg.z = 0.0f;
 
-    Vec3 derivative_term = (error - this->last_error) / dt_s * K_d;
-
-    // add the P, I, D terms
-    Vec3 compensation_angles_deg = proportional_term + integral_term + derivative_term;
-
-    Vec3 compensation_angles = compensation_angles_deg * (M_PI / 180);
-
-    this->last_error = error;
-
-    this->rot_mat = getRotationMatrix(compensation_angles);
+    this->rot_mat = getRotationMatrix(comp_deg * DEG_TO_RAD);
 }
 
 esp_err_t Stabilizer::update(const float dt_s, SharedData& out_data) {
-    // update imu
-    if (this->updateImu() != ESP_OK) {
-        printf("Failed to update IMU\n");
-        return ESP_FAIL;
-    }
+    if (updateImu() != ESP_OK) return ESP_FAIL;
 
-    // update pid
-    this->updatePID(dt_s, this->getAngles());
-
-    // update output data
-    out_data.rot_mat = this->rot_mat;
+    updatePID(dt_s, getAngles(), getGyro());
+    out_data.rot_mat = rot_mat;
     return ESP_OK;
 }
 
-Mat3 Stabilizer::getRotationMatrix(const Vec3& compensation_angles) {
-    Mat3 rotation_matrix_x {{
-        {1, 								0, 							0},
-        {0, cos(compensation_angles.x), -sin(compensation_angles.x)},
-        {0, sin(compensation_angles.x), cos(compensation_angles.x)}
-    }};
-    Mat3 rotation_matrix_y {{
-        {cos(compensation_angles.y),  0, sin(compensation_angles.y)},
-        {0, 								1, 							 0},
-        {-sin(compensation_angles.y), 0, cos(compensation_angles.y)}
-    }};
-    Mat3 rotation_matrix_z {{
-        {cos(compensation_angles.z), -sin(compensation_angles.z), 0},
-        {sin(compensation_angles.z), cos(compensation_angles.z),  0},
-        {0, 							   0, 							 1}
-    }};
+Mat3 Stabilizer::getRotationMatrix(const Vec3& a) {
+    const float cx = cosf(a.x), sx = sinf(a.x);
+    const float cy = cosf(a.y), sy = sinf(a.y);
 
-    Mat3 rotation_matrix = rotation_matrix_x * rotation_matrix_y * rotation_matrix_z;
-
-    return rotation_matrix;
+    // R = Rx * Ry (roll, then pitch; no yaw)
+    return Mat3 {{
+        { cy,      0.0f,  sy      },
+        { sx * sy, cx,   -sx * cy },
+        {-cx * sy, sx,    cx * cy }
+    }};
 }

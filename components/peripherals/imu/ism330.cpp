@@ -601,6 +601,9 @@ esp_err_t Ism330::getAngles(EulerAngles &angles)
     } else {
         stepFilter(madgwick_, d, angles);
     }
+
+    last_gyro_ = Vec3{ d.gx, d.gy, d.gz };
+    
     return ESP_OK;
 }
 

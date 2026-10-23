@@ -10,6 +10,8 @@
 #include "i2c.h"
 #include "types.h"
 
+constexpr int64_t kMaxAgeUs = 30000;  // 30 ms, about 6 missed stabilizer cycles
+
 static const char *TAG = "main";
 
 static QueueHandle_t correction_q = nullptr;
@@ -41,6 +43,7 @@ static void stabilizer_task(void *arg)
         SharedData c{};
         if (ctx->stab->update(dt, c) == ESP_OK) {
             xQueueOverwrite(ctx->q, &c);   // never blocks, latest value wins
+            c.stamp_us = esp_timer_get_time();
         } else {
             ESP_LOGW(TAG, "IMU read failed");
             // On repeated failures, consider publishing a zero correction
@@ -66,7 +69,14 @@ static void gait_task(void *arg)
         float dt = (now_us - last_us) * 1e-6f;
         last_us = now_us;
 
-        SharedData c{};
+        SharedData c{};  // identity by default
+        if (xQueuePeek(correction_q, &c, 0) == pdTRUE) {
+            if (esp_timer_get_time() - c.stamp_us > kMaxAgeUs) {
+                c = SharedData{};   // stale: fall back to identity (no correction)
+            }
+        }
+        // if the peek failed, c is still the identity default
+
         xQueuePeek(correction_q, &c, 0);   // latest value; stays zeroed if none yet
 
         base->update(dt, c);

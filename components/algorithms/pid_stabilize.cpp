@@ -34,7 +34,6 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
     cfg.sample_rate_hz = 200;
     cfg.fusion         = Ism330::FusionType::Mahony;
     cfg.mahony_kp      = 0.5f;   // TODO -- tune btwn 0.1 to 1.0
-    cfg.mahony_kp      = 0.0f;
 
     esp_err_t err = this->imu_.init(cfg);
     if (err != ESP_OK) {

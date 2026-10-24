@@ -1,6 +1,5 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/queue.h"
 
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -8,24 +7,13 @@
 #include "base.h"
 #include "pid_stabilize.h"
 #include "i2c.h"
-#include "types.h"
-
-constexpr int64_t kMaxAgeUs = 30000;  // 30 ms, about 6 missed stabilizer cycles
+#include "rtos_utils.h"
 
 static const char *TAG = "main";
 
-static QueueHandle_t correction_q = nullptr;
-
-struct StabilizerCtx {
-    Stabilizer *stab;
-    QueueHandle_t q;
-};
-
 static void stabilizer_task(void *arg)
-{
-    // printf("Stabilizer task started\n");
-
-    auto *ctx = static_cast<StabilizerCtx*>(arg);
+{   
+    auto *stab = static_cast<Stabilizer*>(arg);
 
     constexpr TickType_t period = pdMS_TO_TICKS(5);   // 200 Hz
     int64_t last_us = esp_timer_get_time();
@@ -38,16 +26,16 @@ static void stabilizer_task(void *arg)
 
         // Guard against a bad dt (first iteration, or a long stall)
         if (dt <= 0.0f || dt > 0.05f) dt = 0.005f;
+        
+        Feedforward ff;
+        if (!ff_box.read(ff, 100000)) ff = Feedforward{}; // stale or missing -> plain PID
 
-        // Read IMU, run filter + PID. Adapt to your Stabilizer API.
-        SharedData c{};
-        if (ctx->stab->update(dt, c) == ESP_OK) {
-            xQueueOverwrite(ctx->q, &c);   // never blocks, latest value wins
-            c.stamp_us = esp_timer_get_time();
+        SharedData out{};
+        if (stab->update(dt, out, ff) == ESP_OK) {
+            out.stamp_us = now_us;          // stamp BEFORE publishing
+            rot_box.publish(out);
         } else {
             ESP_LOGW(TAG, "IMU read failed");
-            // On repeated failures, consider publishing a zero correction
-            // so the robot doesn't keep acting on stale data.
         }
 
         vTaskDelayUntil(&last_wake, period);
@@ -56,11 +44,9 @@ static void stabilizer_task(void *arg)
 
 static void gait_task(void *arg)
 {
-    // printf("Gait task started\n");
+    auto *base = static_cast<Base*>(arg);
 
-    Base *base = static_cast<Base*>(arg);
-
-    constexpr TickType_t period = pdMS_TO_TICKS(10);  // 100 Hz
+    constexpr TickType_t period = pdMS_TO_TICKS(10);
     int64_t last_us = esp_timer_get_time();
     TickType_t last_wake = xTaskGetTickCount();
 
@@ -69,17 +55,13 @@ static void gait_task(void *arg)
         float dt = (now_us - last_us) * 1e-6f;
         last_us = now_us;
 
-        SharedData c{};  // identity by default
-        if (xQueuePeek(correction_q, &c, 0) == pdTRUE) {
-            if (esp_timer_get_time() - c.stamp_us > kMaxAgeUs) {
-                c = SharedData{};   // stale: fall back to identity (no correction)
-            }
-        }
-        // if the peek failed, c is still the identity default
+        SharedData c{};                                   // identity default
+        if (!rot_box.read(c, 30000)) c = SharedData{};    // stale -> no correction
 
-        xQueuePeek(correction_q, &c, 0);   // latest value; stays zeroed if none yet
-
-        base->update(dt, c);
+        Feedforward ff{};
+        base->update(dt, c, ff);                          // Base fills ff from LegController
+        ff.stamp_us = now_us;
+        ff_box.publish(ff);
 
         vTaskDelayUntil(&last_wake, period);
     }
@@ -92,19 +74,15 @@ extern "C" void app_main()
     static I2CBus i2c_;
     ESP_ERROR_CHECK(i2c_.init());
 
-    static Stabilizer stabilizer_({1.5f, 0.0f, 0.0f});  // Kp, Ki, Kd
+    static Stabilizer stabilizer_({1.5f, 0.0f, 0.0f});  // TODO - tune
     static Base base_;
 
     ESP_ERROR_CHECK(base_.init(i2c_.handle()));
     ESP_ERROR_CHECK(stabilizer_.init(i2c_.handle()));
+    
+    ff_box.init();
+    rot_box.init();
 
-    correction_q = xQueueCreate(1, sizeof(SharedData));
-    configASSERT(correction_q);
-
-    static StabilizerCtx stab_ctx{&stabilizer_, correction_q};
-
-    // Stabilizer: higher priority, core 1 (away from WiFi/BT on core 0)
-    xTaskCreatePinnedToCore(stabilizer_task, "stabilizer", 4096, &stab_ctx, 6, nullptr, 1);
-    // Gait: lower priority
-    xTaskCreatePinnedToCore(gait_task, "gait", 4096, &base_, 5, nullptr, 0);
+    xTaskCreatePinnedToCore(stabilizer_task, "stabilizer", 4096, &stabilizer_, 6, nullptr, 1);
+    xTaskCreatePinnedToCore(gait_task,       "gait",       4096, &base_,       5, nullptr, 0);
 }

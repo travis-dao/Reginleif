@@ -2,8 +2,8 @@
 #define PID_STABILIZE_h
 
 #include "types.h"
-// #include "mpu6050.h"
 #include "ism330.h"
+#include "rtos_utils.h"
 
 class Stabilizer {
     public:
@@ -16,8 +16,8 @@ class Stabilizer {
         Stabilizer(const Config& config);
         esp_err_t init(i2c_master_bus_handle_t bus);
         esp_err_t updateImu();
-        void updatePID(const float dt_s, const Vec3& angles, const Vec3& gyro_dps);
-        esp_err_t update(const float dt_s, SharedData& out_data);
+        void updatePID(const float dt_s, const Vec3& angles_in, const Vec3& gyro_dps, const Feedforward& ff);
+        esp_err_t update(const float dt_s, SharedData& out_data, const Feedforward& ff);
 
         Mat3 rot_mat;
         Vec3 target_angles = Vec3 { 0.0f, 0.0f, 0.0f };

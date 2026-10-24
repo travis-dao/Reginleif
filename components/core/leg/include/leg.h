@@ -38,15 +38,17 @@ class Leg {
 
 		Leg(const Config& cfg);
 
-		void update(float dt_s, const SharedData& shared_data, Theta3& out_target_angles);
+		void update(float dt_s, const SharedData& shared_data, const float z_off, Theta3& out_target_angles);
 		void setState(const LegState state) { this->leg_state = state; }
 
 		bool isGrounded() { return leg_state != SWING; }
+        float getSwingPhase() { return phase; }
 
 	private:
 		float orientation_offset;
 		Theta3 angles;
 		float phase;
+		Vec3 cmd_pos;
 
 		LegState leg_state;
 		PositionState pos_state;
@@ -62,7 +64,7 @@ class Leg {
 		void updateSwing(const float dt_s, const float step_length, const float step_height);
 		void updateStance(const float dt_s, const SharedData& shared_data);
 
-		void applyStabilization(const float dt_s, const Mat3& rot_mat);
+		void computeCommand(const Mat3& rot_mat, const float z_off);
 		void balance(const Vec3& angles);
 };
 

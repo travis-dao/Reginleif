@@ -26,14 +26,14 @@ Stabilizer::Stabilizer(const Config& config) {
 
 esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
     // Initialize IMU and connect to I2C bus
-    esp_log_level_set("mpu6050", ESP_LOG_ERROR);
+    esp_log_level_set("imu", ESP_LOG_ERROR);
 
     Ism330::Config cfg;
     cfg.bus            = bus;
     cfg.odr            = Ism330::Odr::Hz417;
     cfg.sample_rate_hz = 200;
     cfg.fusion         = Ism330::FusionType::Mahony;
-    cfg.mahony_kp      = 0.5f;   // TODO -- tune btwn 0.1 to 1.0
+    cfg.mahony_kp      = 0.5f; // TODO -- tune btwn 0.1 to 1.0
 
     esp_err_t err = this->imu_.init(cfg);
     if (err != ESP_OK) {
@@ -67,17 +67,19 @@ esp_err_t Stabilizer::updateImu() {
     return ESP_OK;
 }
 
-void Stabilizer::updatePID(float dt_s, const Vec3& angles, const Vec3& gyro_dps) {
+void Stabilizer::updatePID(float dt_s, const Vec3& angles_in, const Vec3& gyro_dps, const Feedforward& ff) {
     if (dt_s <= 0.0f) return;
 
-    Vec3 error = target_angles - angles;
+    Vec3 error = (target_angles + ff.attitude_deg) - angles_in;
     error.z = 0.0f; // no yaw feedback
 
-    integral_sum = integral_sum + error * dt_s;
-    integral_sum.x = std::clamp(integral_sum.x, -I_MAX, I_MAX);
-    integral_sum.y = std::clamp(integral_sum.y, -I_MAX, I_MAX);
+    if (!ff.freeze_integral) {
+        integral_sum = integral_sum + error * dt_s;
+        integral_sum.x = std::clamp(integral_sum.x, -I_MAX, I_MAX);
+        integral_sum.y = std::clamp(integral_sum.y, -I_MAX, I_MAX);
+    }
 
-    Vec3 d_term = (gyro_dps * -1.0f) * K_d;   // gyro measurement = change in deg/sec = derivative
+    Vec3 d_term = (ff.rate_dps - gyro_dps) * K_d;
 
     Vec3 comp_deg = error * K_p + integral_sum * K_i + d_term;
     comp_deg.x = std::clamp(comp_deg.x, -MAX_COMP_DEG, MAX_COMP_DEG);
@@ -87,10 +89,10 @@ void Stabilizer::updatePID(float dt_s, const Vec3& angles, const Vec3& gyro_dps)
     this->rot_mat = getRotationMatrix(comp_deg * DEG_TO_RAD);
 }
 
-esp_err_t Stabilizer::update(const float dt_s, SharedData& out_data) {
+esp_err_t Stabilizer::update(const float dt_s, SharedData& out_data, const Feedforward& ff) {
     if (updateImu() != ESP_OK) return ESP_FAIL;
 
-    updatePID(dt_s, getAngles(), getGyro());
+    updatePID(dt_s, getAngles(), getGyro(), ff);
     out_data.rot_mat = rot_mat;
     return ESP_OK;
 }

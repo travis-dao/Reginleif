@@ -1,6 +1,7 @@
 #ifndef TYPES_h
 #define TYPES_h
 
+#include <cstdint>
 #include <math.h>
 
 constexpr float RAD_TO_DEG = static_cast<float>(180.0f / M_PI);
@@ -51,13 +52,5 @@ struct Mat3 {
 	// Matrix * Matrix
 	Mat3 operator*(const Mat3& o) const;
 };
-
-struct SharedData {
-	Mat3 rot_mat;
-	float current_speed;
-	int64_t stamp_us = 0;
-};
-
-static_assert(std::is_trivially_copyable_v<SharedData>, "SharedData goes through a FreeRTOS queue; must be trivially copyable");
 
 #endif

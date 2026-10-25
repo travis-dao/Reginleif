@@ -4,6 +4,7 @@
 
 #include "leg.h"
 #include "base.h"
+#include "leg_controller.h"
 #include "servo.h"
 #include "pid_stabilize.h"
 #include "types.h"
@@ -19,11 +20,9 @@ Leg::Leg(const Config& cfg):
 {
 	this->orientation_offset = 0.0f;
 	this->pos_state = {
-		.base_neutral_pos = Offset::neutral_vector[cfg.id] * Offset::neutral_offset,
-		.true_neutral_pos = Offset::neutral_vector[cfg.id] * (Offset::neutral_offset + Offset::body_offset),
-		.curr_pos = this->pos_state.base_neutral_pos,
-		.target_pos = this->pos_state.base_neutral_pos,
-		.last_grounded_pos = this->pos_state.base_neutral_pos,
+		.curr_pos = Offset::base_neutral_pos[cfg.id],
+		.target_pos = Offset::base_neutral_pos[cfg.id],
+		.last_grounded_pos = Offset::base_neutral_pos[cfg.id],
 	};
 	this->phase = 0.0f;
 	this->leg_state = HOLD;
@@ -141,7 +140,7 @@ void Leg::updateSwing(const float dt_s, const float step_length, const float ste
 	this->pos_state.target_pos.x += velocity_x * dt_s;
 
 	// z = position-based, add on top of whatever update_orientation() just set
-	this->pos_state.target_pos.z = this->pos_state.base_neutral_pos.z + step_height * sinf(PI * this->phase);
+	this->pos_state.target_pos.z = Offset::base_neutral_pos[info.id].z + step_height * sinf(PI * this->phase);
 
 	// advance phase
 	this->phase += dt_s / Movement::SWING_DURATION_S;
@@ -154,14 +153,14 @@ void Leg::update(const float dt_s, const SharedData& shared_data, Theta3& out_ta
 	// 2. update target pos based on state
 	if (this->leg_state == SWING) {
 		// calc step length from where leg lifts
-		float target_pos_x = this->pos_state.base_neutral_pos.x + (Movement::MAX_STEP_LENGTH_MM / 2.0f);
+		float target_pos_x = Offset::base_neutral_pos[info.id].x + (Movement::MAX_STEP_LENGTH_MM / 2.0f);
 		float adjusted_step_length = target_pos_x - this->pos_state.last_grounded_pos.x;
 
 		updateSwing(dt_s, adjusted_step_length, Movement::STEP_HEIGHT_MM);
 	} else if (this->leg_state == STANCE) {
 		updateStance(dt_s, shared_data);
 	} else {
-		// this->pos_state.target_pos = this->pos_state.base_neutral_pos; // TODO: CHANGE LATER
+		// this->pos_state.target_pos = offset::base_neutral_pos[cfg.id]; // TODO: CHANGE LATER
 	}
 
 	// 3. while grounded, update pos to calculate proper step length
@@ -175,23 +174,4 @@ void Leg::update(const float dt_s, const SharedData& shared_data, Theta3& out_ta
 	// update variables
 	this->pos_state.curr_pos = this->pos_state.target_pos;
 	out_target_angles = this->angles;
-}
-
-void Leg::balance(const Vec3& angles) {
-	// printf("balancing\n");
-	if (this->leg_state == SWING) return;
-
-	// 3d plane method
-	float A = -tan(angles.y * DEG_TO_RAD);
-	float B = tan(angles.x * DEG_TO_RAD);
-
-	float offset = -(A * this->pos_state.true_neutral_pos.x + B * this->pos_state.true_neutral_pos.y);
-
-	// difference between target z pos and current z pos
-	float offset_delta = fabsf((Offset::neutral_offset.z + offset) - this->pos_state.curr_pos.z);
-
-	// only move leg if change is substantial
-	if (offset_delta > 0.0f) {
-		this->pos_state.target_pos = this->pos_state.base_neutral_pos + Vec3 { 0.0f, 0.0f, offset };
-	}
 }

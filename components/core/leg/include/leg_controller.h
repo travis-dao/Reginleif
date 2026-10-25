@@ -28,6 +28,7 @@ namespace Movement {
 
 namespace Offset {
     constexpr Vec3 neutral_offset = { 150.0f, 150.0f, 0.0f };
+    constexpr Vec3 body_offset = { 33.72f, 43.13f, 0.0f };
 
     const Vec3 neutral_vector[4] = {
         {  1,  1, 1 },  // Front Left
@@ -36,7 +37,19 @@ namespace Offset {
         { -1,  1, 1 },  // Back Left
     };
 
-    constexpr Vec3 body_offset = { 33.72f, 43.13f, 0.0f };
+    const Vec3 base_neutral_pos[4] = {
+        neutral_vector[0] * neutral_offset,
+        neutral_vector[1] * neutral_offset,
+        neutral_vector[2] * neutral_offset,
+        neutral_vector[3] * neutral_offset
+    };
+
+    const Vec3 true_neutral_pos[4] = {
+        (neutral_vector[0] * neutral_offset) + body_offset,
+        (neutral_vector[1] * neutral_offset) + body_offset,
+        (neutral_vector[2] * neutral_offset) + body_offset,
+        (neutral_vector[3] * neutral_offset) + body_offset
+    };
 }
 
 class LegController {

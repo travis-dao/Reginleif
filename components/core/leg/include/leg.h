@@ -22,8 +22,6 @@ struct Info {
 };
 
 struct PositionState {
-	Vec3 base_neutral_pos;
-	Vec3 true_neutral_pos;
 	Vec3 curr_pos;
 	Vec3 target_pos;
 	Vec3 last_grounded_pos;

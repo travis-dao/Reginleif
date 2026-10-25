@@ -59,9 +59,6 @@ class Leg {
 
 		void updateSwing(const float dt_s, const float step_length, const float step_height);
 		void updateStance(const float dt_s, const SharedData& shared_data);
-
-		void applyStabilization(const float dt_s, const Mat3& rot_mat);
-		void balance(const Vec3& angles);
 };
 
 #endif

@@ -27,28 +27,40 @@ namespace Movement {
 }
 
 namespace Offset {
-    constexpr Vec3 neutral_offset = { 150.0f, 150.0f, 0.0f };
-    constexpr Vec3 body_offset = { 33.72f, 43.13f, 0.0f };
+    // Unsigned magnitudes
+    constexpr Vec3 foot_offset_mag     = { 150.0f, 150.0f, 0.0f };  // foot relative to its leg base
+    constexpr Vec3 leg_base_offset_mag = { 33.72f, 43.13f, 0.0f };  // leg base relative to body center
 
-    const Vec3 neutral_vector[4] = {
-        {  1,  1, 1 },  // Front Left
-        {  1, -1, 1 },  // Front Right
+    // Per-leg sign for each axis (FL, FR, BR, BL)
+    const Vec3 quadrant_sign[4] = {
+        { +1, +1, 1 },  // Front Left
+        { +1, -1, 1 },  // Front Right
         { -1, -1, 1 },  // Back Right
-        { -1,  1, 1 },  // Back Left
+        { -1, +1, 1 },  // Back Left
     };
 
-    const Vec3 base_neutral_pos[4] = {
-        neutral_vector[0] * neutral_offset,
-        neutral_vector[1] * neutral_offset,
-        neutral_vector[2] * neutral_offset,
-        neutral_vector[3] * neutral_offset
+    // Leg base position, body frame
+    const Vec3 leg_base_pos[4] = {
+        quadrant_sign[0] * leg_base_offset_mag,
+        quadrant_sign[1] * leg_base_offset_mag,
+        quadrant_sign[2] * leg_base_offset_mag,
+        quadrant_sign[3] * leg_base_offset_mag,
     };
 
-    const Vec3 true_neutral_pos[4] = {
-        (neutral_vector[0] * neutral_offset) + body_offset,
-        (neutral_vector[1] * neutral_offset) + body_offset,
-        (neutral_vector[2] * neutral_offset) + body_offset,
-        (neutral_vector[3] * neutral_offset) + body_offset
+    // Neutral foot position, leg frame
+    const Vec3 foot_neutral_leg[4] = {
+        quadrant_sign[0] * foot_offset_mag,
+        quadrant_sign[1] * foot_offset_mag,
+        quadrant_sign[2] * foot_offset_mag,
+        quadrant_sign[3] * foot_offset_mag,
+    };
+
+    // Neutral foot position, body frame
+    const Vec3 foot_neutral_body[4] = {
+        leg_base_pos[0] + foot_neutral_leg[0],
+        leg_base_pos[1] + foot_neutral_leg[1],
+        leg_base_pos[2] + foot_neutral_leg[2],
+        leg_base_pos[3] + foot_neutral_leg[3],
     };
 }
 

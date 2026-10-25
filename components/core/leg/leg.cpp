@@ -14,26 +14,15 @@ constexpr float TIBIA_LENGTH = 34.66f + 147.03f;
 constexpr float BODY_TO_COXA_X_OFFSET = 28.58f;
 constexpr float BODY_TO_COXA_Z_OFFSET = -9.72f;
 
-static const Vec3 kHipPos[4] = {
-    Offset::HIP_SIGN[0] * Offset::body_offset,
-    Offset::HIP_SIGN[1] * Offset::body_offset,
-    Offset::HIP_SIGN[2] * Offset::body_offset,
-    Offset::HIP_SIGN[3] * Offset::body_offset,
-};
-
 Leg::Leg(const Config& cfg): 
 	info(cfg.id),
 	pca(cfg.pca)
 {
 	this->orientation_offset = 0.0f;
-
-	const Vec3 neutral = Offset::HIP_SIGN[cfg.id] * Offset::neutral_offset;
 	this->pos_state = {
-		.base_neutral_pos  = neutral,
-		.true_neutral_pos  = Offset::HIP_SIGN[cfg.id] * (Offset::neutral_offset + Offset::body_offset),
-		.curr_pos          = neutral,
-		.target_pos        = neutral,
-		.last_grounded_pos = neutral,
+		.curr_pos = Offset::foot_neutral_leg[cfg.id],
+		.target_pos = Offset::foot_neutral_leg[cfg.id],
+		.last_grounded_pos = Offset::foot_neutral_leg[cfg.id],
 	};
 
 	this->phase = 0.0f;
@@ -127,7 +116,7 @@ void Leg::moveLeg() {
 }
 
 void Leg::computeCommand(const Mat3& rot_mat, const float z_off) {
-    const Vec3& hip = kHipPos[this->info.id];
+    const Vec3& hip = Offset::leg_base_pos[this->info.id];
 
     Vec3 shifted = this->pos_state.target_pos;
 	shifted.z += z_off;
@@ -161,7 +150,7 @@ void Leg::updateSwing(const float dt_s, const float step_length, const float ste
 	this->pos_state.target_pos.x += velocity_x * dt_s;
 
 	// z = position-based, add on top of whatever update_orientation() just set
-	this->pos_state.target_pos.z = this->pos_state.base_neutral_pos.z + step_height * sinf(PI * this->phase);
+	this->pos_state.target_pos.z = Offset::foot_neutral_leg[info.id].z + step_height * sinf(PI * this->phase);
 
 	// advance phase
 	this->phase += dt_s / Movement::SWING_DURATION_S;
@@ -172,14 +161,14 @@ void Leg::update(const float dt_s, const SharedData& shared_data, const float z_
 	// 1. update target pos based on state
 	if (this->leg_state == SWING) {
 		// calc step length from where leg lifts
-		float target_pos_x = this->pos_state.base_neutral_pos.x + (Movement::MAX_STEP_LENGTH_MM / 2.0f);
+		float target_pos_x = Offset::foot_neutral_leg[info.id].x + (Movement::MAX_STEP_LENGTH_MM / 2.0f);
 		float adjusted_step_length = target_pos_x - this->pos_state.last_grounded_pos.x;
 
 		updateSwing(dt_s, adjusted_step_length, Movement::STEP_HEIGHT_MM);
 	} else if (this->leg_state == STANCE) {
 		updateStance(dt_s, shared_data);
 	} else {
-		// this->pos_state.target_pos = this->pos_state.base_neutral_pos; // TODO: CHANGE LATER
+		// this->pos_state.target_pos = offset::foot_neutral_leg[cfg.id]; // TODO: CHANGE LATER
 	}
 
 	// 2. while grounded, update pos to calculate proper step length

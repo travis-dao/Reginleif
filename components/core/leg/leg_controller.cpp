@@ -119,8 +119,8 @@ void LegController::update(float dt_s, const SharedData& shared_data, Feedforwar
 
 void LegController::setTiltGoal(int current_airborne_leg) {
     for (int i = 0; i < 4; i++) {
-        int s = Offset::HIP_SIGN[i].x * Offset::HIP_SIGN[current_airborne_leg].x
-              + Offset::HIP_SIGN[i].y * Offset::HIP_SIGN[current_airborne_leg].y;   // 2 = self, 0 = adjacent, -2 = diagonal
+        int s = Offset::quadrant_sign[i].x * Offset::quadrant_sign[current_airborne_leg].x
+              + Offset::quadrant_sign[i].y * Offset::quadrant_sign[current_airborne_leg].y;   // 2 = self, 0 = adjacent, -2 = diagonal
         if      (s == 0)  z_off_goal_[i] = -TILT_MM;     // adjacent: push down
         else if (s == -2) z_off_goal_[i] = +TILT_MM;     // diagonal: pull up
         else              z_off_goal_[i] = 0.0f;         // the lifting leg itself

@@ -63,7 +63,6 @@ class Leg {
 		void updateStance(const float dt_s, const SharedData& shared_data);
 
 		void computeCommand(const Mat3& rot_mat, const float z_off);
-		void balance(const Vec3& angles);
 };
 
 #endif

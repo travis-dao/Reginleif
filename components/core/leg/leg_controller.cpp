@@ -2,7 +2,7 @@
 #include "servo.h"
 #include <algorithm>
 
-static const float kTiltAtt[4][2] = {   // {roll, pitch} deg, TODO - logged with stabilizer off
+static const float tilt_attitude[4][2] = {   // {roll, pitch} deg, TODO - logged with stabilizer off
     { 0.0f, 0.0f },   // leg 0 airborne
     { 0.0f, 0.0f },   // leg 1
     { 0.0f, 0.0f },   // leg 2
@@ -95,11 +95,11 @@ void LegController::update(float dt_s, const SharedData& shared_data, Feedforwar
     // expected attitude, ramped with the tilt progress (0 = just switched, 1 = settled)
     float p = 1.0f - std::clamp(remaining / (2.0f * TILT_MM), 0.0f, 1.0f);
     if (lifting >= 0) {
-        ff.attitude_deg = Vec3{ p * kTiltAtt[lifting][0], p * kTiltAtt[lifting][1], 0.0f };
+        ff.attitude_deg = Vec3 { p * tilt_attitude[lifting][0], p * tilt_attitude[lifting][1], 0.0f };
     } else {
-        ff.attitude_deg = Vec3{0, 0, 0};
+        ff.attitude_deg = Vec3 {0, 0, 0};
     }
-    ff.rate_dps        = Vec3{0, 0, 0}; // TODO tune
+    ff.rate_dps        = Vec3 {0, 0, 0}; // TODO tune
     ff.freeze_integral = tilt_moving;
 
 

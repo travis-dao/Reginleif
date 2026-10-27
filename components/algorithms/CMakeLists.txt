@@ -1,5 +1,5 @@
 idf_component_register(
-  SRCS "pid_stabilize.cpp"
+  SRCS "imu_wrapper.cpp"
   INCLUDE_DIRS "include"
   REQUIRES util core peripherals
 )

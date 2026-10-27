@@ -65,10 +65,10 @@ void Base::updateSpeed(const float dt_s) {
 	}
 }
 
-void Base::update(const float dt_s, SharedData& shared_data, Feedforward& ff) {
+void Base::update(const float dt_s, SharedData& shared_data) {
 	shared_data.current_speed = this->current_speed;
 
 	updateSpeed(dt_s);
 
-	leg_controller_.update(dt_s, shared_data, ff);
+	leg_controller_.update(dt_s, shared_data);
 }

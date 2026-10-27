@@ -60,7 +60,7 @@ class LegController {
     public:
         LegController();
 
-        void update(const float dt_s, const SharedData& shared_data, Feedforward& ff);
+        void update(const float dt_s, const SharedData& shared_data);
         esp_err_t init(i2c_master_bus_handle_t bus);
         
         bool isGrounded() { return this->grounded; }
@@ -75,8 +75,6 @@ class LegController {
 
 		int current_airborne_leg;
         bool grounded;
-
-        void setTiltGoal(int lifting);
 };
 
 #endif

@@ -6,7 +6,6 @@
 #include "base.h"
 #include "leg_controller.h"
 #include "servo.h"
-#include "pid_stabilize.h"
 #include "types.h"
 
 constexpr float FEMUR_LENGTH = 122.64f;
@@ -27,7 +26,6 @@ Leg::Leg(const Config& cfg):
 
 	this->phase = 0.0f;
 	this->leg_state = HOLD;
-	this->cmd_pos = this->pos_state.target_pos;
 
 	moveLeg();
 }
@@ -91,7 +89,7 @@ Theta3 Leg::IK(Vec3 target_foot_pos) {
 
 void Leg::moveLeg() {
 	// flip y pos
-	Vec3 adjusted_target_pos = this->cmd_pos;
+	Vec3 adjusted_target_pos = this->pos_state.target_pos;
 	adjusted_target_pos.y *= this->info.is_right_leg ? -1.0f : 1.0f;
 
 	// check to flip angles for reverse mounted servos (leg side)
@@ -113,21 +111,6 @@ void Leg::moveLeg() {
 
 	// update members
 	this->angles = target_angles;
-}
-
-void Leg::computeCommand(const Mat3& rot_mat, const float z_off) {
-    const Vec3& hip = Offset::leg_base_pos[this->info.id];
-
-    Vec3 shifted = this->pos_state.target_pos;
-	shifted.z += z_off;
-    // then rotate about the body center
-    Vec3 rotated = rot_mat * (shifted + hip) - hip;
-
-    // Swing legs fade the rotation out and back in (w = 1 at lift-off and touchdown, 0 mid-swing) so the foot doesn't jump when the state changes.
-    float w = 1.0f;
-    if (this->leg_state == SWING) w = 1.0f - sinf(PI * this->phase);
-
-    this->cmd_pos = shifted + (rotated - shifted) * w; // lerp
 }
 
 void Leg::updateStance(const float dt_s, const SharedData& shared_data) {
@@ -157,7 +140,7 @@ void Leg::updateSwing(const float dt_s, const float step_length, const float ste
 	if (this->phase > 1.0f) this->phase = 1.0f;
 }
 
-void Leg::update(const float dt_s, const SharedData& shared_data, const float z_off, Theta3& out_target_angles) {
+void Leg::update(const float dt_s, const SharedData& shared_data, Theta3& out_target_angles) {
 	// 1. update target pos based on state
 	if (this->leg_state == SWING) {
 		// calc step length from where leg lifts
@@ -177,7 +160,6 @@ void Leg::update(const float dt_s, const SharedData& shared_data, const float z_
 	}
 
 	// 3. move servos based on target pos
-    computeCommand(shared_data.rot_mat, z_off);
 	moveLeg();
 
 	// update variables

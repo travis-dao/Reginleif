@@ -3,7 +3,7 @@
 
 #include "pca9685.h"
 #include "types.h"
-#include "pid_stabilize.h"
+#include "imu_wrapper.h"
 
 enum LegState {
  	HOLD, SWING, STANCE
@@ -36,7 +36,7 @@ class Leg {
 
 		Leg(const Config& cfg);
 
-		void update(float dt_s, const SharedData& shared_data, const float z_off, Theta3& out_target_angles);
+		void update(float dt_s, const SharedData& shared_data, Theta3& out_target_angles);
 		void setState(const LegState state) { this->leg_state = state; }
 
 		bool isGrounded() { return leg_state != SWING; }
@@ -46,7 +46,6 @@ class Leg {
 		float orientation_offset;
 		Theta3 angles;
 		float phase;
-		Vec3 cmd_pos;
 
 		LegState leg_state;
 		PositionState pos_state;
@@ -61,8 +60,6 @@ class Leg {
 
 		void updateSwing(const float dt_s, const float step_length, const float step_height);
 		void updateStance(const float dt_s, const SharedData& shared_data);
-
-		void computeCommand(const Mat3& rot_mat, const float z_off);
 };
 
 #endif

@@ -32,19 +32,19 @@ class Mailbox {
 };
 
 struct SharedData {
-	Mat3 rot_mat;
-	float current_speed;
-	int64_t stamp_us = 0;
+    int64_t stamp_us = 0;          // set by imu_task before publishing
+    float   current_speed_mm_s = 0.0f;  // set by Base for the legs (already used)
+
+    Mat3 rot_mat = Mat3::Identity();
+
+    // IMU, written by IMUWrapper
+    Vec3 angles_rad { 0.0f, 0.0f, 0.0f};
+    Vec3 rpy_rad  {0.0f, 0.0f, 0.0f};  // RADIANS, body orientation in the world
+    Vec3 gyro_rad_s {0.0f, 0.0f, 0.0f};  // rad/s, body frame, gyro bias removed
+    bool valid = false;            // false in a default SharedData{}: gait_task passes
+                                   // that when the mailbox is stale, so Base sees "no IMU"
 };
 
-struct Feedforward {
-    Vec3     attitude_deg    {0, 0, 0};
-    Vec3     rate_dps        {0, 0, 0}; // TODO - tune
-    bool     freeze_integral = false;
-    int64_t stamp_us        = 0;
-};
-
-extern Mailbox<Feedforward> ff_box;
-extern Mailbox<SharedData> rot_box;
+extern Mailbox<SharedData> shared_data;
 
 #endif

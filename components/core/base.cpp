@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <math.h>
+#include <new>
 
 #include "esp_log.h"
 #include "freertos/projdefs.h"
+#include "rtos_utils.h"
 #include "types.h"
 
 #include "base.h"
@@ -10,46 +12,42 @@
 float SPEED_LERP_RATE = 4.0f;
 
 Base::Base() {
-	this->current_speed = 0.0f;
+	this->current_speed_mm_s = 0.0f;
 	this->state = REST;
-	this->target_orientation = Vec3{0.0f, 0.0f, 0.0f};
+	this->target_orientation_rad = Vec3{0.0f, 0.0f, 0.0f};
 }
 
 esp_err_t Base::init(i2c_master_bus_handle_t bus) {
-    esp_err_t err = leg_controller_.init(bus);
+    esp_err_t err = this->leg_controller_.init(bus);
 
     if (err != ESP_OK) {
         return err;
     }
 
-    return ESP_OK;
+	return ESP_OK;
 }
 
 void Base::updateInput(Vec3 input) {
 	this->input = input;
-
-	if (input.magnitude() == 0) {
-		state = REST;
-	} else {
-		state = WALK;
-	}
+	
+	state = this->input.x > 0.0f ? WALK : REST;
 }
 
 void Base::updateSpeed(const float dt_s) {
-	float target_speed;
+	float target_speed_mm_s;
 
 	switch (this->state) {
 	case REST:
-		target_speed = 0.0f;
+		target_speed_mm_s = 0.0f;
 		break;
 	case WALK:
 	case RUN:
-		target_speed =
-			(Movement::MAX_STEP_LENGTH_MM * 2) /
-			(Movement::SWING_DURATION_S * 3); // calc stance speed
+		target_speed_mm_s =
+			(Movement::k_step_length_mm * 2) /
+			(Movement::k_swing_duration_s * 3); // calc stance speed
 		break;
 	default:
-		target_speed = 0.0f;
+		target_speed_mm_s = 0.0f;
 		break;
 	}
 
@@ -57,18 +55,19 @@ void Base::updateSpeed(const float dt_s) {
 	float t = 1.0f - expf(-SPEED_LERP_RATE * dt_s);
 	t = std::clamp(t, 0.0f, 1.0f);
 
-	this->current_speed = std::lerp(this->current_speed, target_speed, t);
+	this->current_speed_mm_s = std::lerp(this->current_speed_mm_s, target_speed_mm_s, t);
 
 	// snap to zero to avoid tiny residual velocity keeping legs "moving"
-	if (fabsf(this->current_speed) < 0.001f) {
-		this->current_speed = 0.0f;
+	if (fabsf(this->current_speed_mm_s) < 0.001f) {
+		this->current_speed_mm_s = 0.0f;
 	}
 }
 
 void Base::update(const float dt_s, SharedData& shared_data) {
-	shared_data.current_speed = this->current_speed;
+	shared_data.current_speed_mm_s = this->current_speed_mm_s;
+	this->target_orientation_rad = shared_data.angles_rad;
 
 	updateSpeed(dt_s);
 
-	leg_controller_.update(dt_s, shared_data);
+	this->leg_controller_.update(dt_s, shared_data);
 }

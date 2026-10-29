@@ -5,9 +5,9 @@
 #include "pca9685.h"
 
 namespace Movement {
-    constexpr float MAX_STEP_LENGTH_MM = 0.0f;
-    constexpr float STEP_HEIGHT_MM = 100.0f;
-    constexpr float SWING_DURATION_S = 0.250f;
+    constexpr float k_step_length_mm = 0.0f;
+    constexpr float k_step_height_mm = 100.0f;
+    constexpr float k_swing_duration_s = 0.250f;
     
     constexpr int next_leg_gait[5] = {
         /* -1 -> */ 0,
@@ -19,41 +19,44 @@ namespace Movement {
 }
 
 namespace Offset {
-    // Unsigned magnitudes
-    constexpr Vec3 foot_offset_mag     = { 150.0f, 150.0f, 0.0f };  // foot relative to its leg base
-    constexpr Vec3 leg_base_offset_mag = { 33.72f, 43.13f, 0.0f };  // leg base relative to body center
+    // in foot frame
+    // (0, 0, 0) = hip of foot
+    constexpr Vec3 foot_neutral_offset_mag = { 150.0f, 150.0f, 0.0f };
+    // from body frame
+    // (0, 0, 0) = center of body
+    constexpr Vec3 leg_base_offset_mag = { 33.72f, 43.13f, -20.0f };
 
     // Per-leg sign for each axis (FL, FR, BR, BL)
-    const Vec3 quadrant_sign[4] = {
-        { +1, +1, 1 },  // Front Left
-        { +1, -1, 1 },  // Front Right
-        { -1, -1, 1 },  // Back Right
-        { -1, +1, 1 },  // Back Left
-    };
+    constexpr Array<Vec3, 4> quadrant_sign = {{
+        { +1, +1, +1 },  // Front Left
+        { +1, -1, +1 },  // Front Right
+        { -1, -1, +1 },  // Back Right
+        { -1, +1, +1 },  // Back Left
+    }};
 
     // Leg base position, body frame
-    const Vec3 leg_base_pos[4] = {
+    const Array<Vec3, 4> leg_base_pos_bf = {{
         quadrant_sign[0] * leg_base_offset_mag,
         quadrant_sign[1] * leg_base_offset_mag,
         quadrant_sign[2] * leg_base_offset_mag,
         quadrant_sign[3] * leg_base_offset_mag,
-    };
+    }};
 
     // Neutral foot position, leg frame
-    const Vec3 foot_neutral_leg[4] = {
-        quadrant_sign[0] * foot_offset_mag,
-        quadrant_sign[1] * foot_offset_mag,
-        quadrant_sign[2] * foot_offset_mag,
-        quadrant_sign[3] * foot_offset_mag,
-    };
+    const Array<Vec3, 4> neutral_foot_pos_lf = {{
+        quadrant_sign[0] * foot_neutral_offset_mag,
+        quadrant_sign[1] * foot_neutral_offset_mag,
+        quadrant_sign[2] * foot_neutral_offset_mag,
+        quadrant_sign[3] * foot_neutral_offset_mag,
+    }};
 
     // Neutral foot position, body frame
-    const Vec3 foot_neutral_body[4] = {
-        leg_base_pos[0] + foot_neutral_leg[0],
-        leg_base_pos[1] + foot_neutral_leg[1],
-        leg_base_pos[2] + foot_neutral_leg[2],
-        leg_base_pos[3] + foot_neutral_leg[3],
-    };
+    const Array<Vec3, 4> neutral_foot_pos_bf = {{
+        leg_base_pos_bf[0] + neutral_foot_pos_lf[0],
+        leg_base_pos_bf[1] + neutral_foot_pos_lf[1],
+        leg_base_pos_bf[2] + neutral_foot_pos_lf[2],
+        leg_base_pos_bf[3] + neutral_foot_pos_lf[3],
+    }};
 }
 
 class LegController {
@@ -64,16 +67,22 @@ class LegController {
         esp_err_t init(i2c_master_bus_handle_t bus);
         
         bool isGrounded() { return this->grounded; }
-		int getCurrentAirborneLeg() { return this->current_airborne_leg; }
+		int getSwingLeg() { return this->swing_leg; }
+
+        Array<Vec3, 4> footPositionsBody() const;
+        Array<Vec3, 4> landingTargetsBody() const;
+
+        void predictFootContacts(float dt_step, bool* out, int n_steps) const;
+        void setFootCorrections(const Array<Vec3, 4> delta_mm);
 
     private:
         Leg* legs_[4];
 		Pca9685 servo_driver_;
 
-        Theta3* target_angles[4];
+        Array<Theta3, 4> target_angles;
         float target_angles_buffer[12];
 
-		int current_airborne_leg;
+		int swing_leg;
         bool grounded;
 };
 

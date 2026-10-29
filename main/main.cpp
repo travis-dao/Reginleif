@@ -5,15 +5,14 @@
 #include "esp_timer.h"
 
 #include "base.h"
-#include "imu_wrapper.h"
 #include "i2c.h"
 #include "rtos_utils.h"
+#include "stabilizer.h"
 
 static const char *TAG = "main";
 
-static void imu_task(void *arg)
-{   
-    auto *imu = static_cast<IMUWrapper*>(arg);
+static void stabilizer_task(void *arg) {   
+    auto *stabilizer = static_cast<Stabilizer*>(arg);
 
     constexpr TickType_t period = pdMS_TO_TICKS(5);   // 200 Hz
     int64_t last_us = esp_timer_get_time();
@@ -28,9 +27,9 @@ static void imu_task(void *arg)
         if (dt <= 0.0f || dt > 0.05f) dt = 0.005f;
 
         SharedData out{};
-        if (imu->update(dt, out) == ESP_OK) {
-            out.stamp_us = now_us;          // stamp BEFORE publishing
-            rot_box.publish(out);
+        if (stabilizer->update(dt, out) == ESP_OK) {
+            out.stamp_us = now_us;
+            shared_data.publish(out);
         } else {
             ESP_LOGW(TAG, "IMU read failed");
         }
@@ -39,8 +38,7 @@ static void imu_task(void *arg)
     }
 }
 
-static void gait_task(void *arg)
-{
+static void gait_task(void *arg) {
     auto *base = static_cast<Base*>(arg);
 
     constexpr TickType_t period = pdMS_TO_TICKS(10);
@@ -53,7 +51,7 @@ static void gait_task(void *arg)
         last_us = now_us;
 
         SharedData c{};                                   // identity default
-        if (!rot_box.read(c, 30000)) c = SharedData{};    // stale -> no correction
+        if (!shared_data.read(c, 30000)) c = SharedData{};    // stale -> no correction
 
         base->update(dt, c);
 
@@ -61,21 +59,20 @@ static void gait_task(void *arg)
     }
 }
 
-extern "C" void app_main()
-{
+extern "C" void app_main() {
     printf("Initialization Sequence\n");
 
     static I2CBus i2c_;
     ESP_ERROR_CHECK(i2c_.init());
 
-    static IMUWrapper imu_;
+    static Stabilizer stabilizer_({0.0f, 0.0f, 0.0f});
     static Base base_;
 
     ESP_ERROR_CHECK(base_.init(i2c_.handle()));
-    ESP_ERROR_CHECK(imu_.init(i2c_.handle()));
+    ESP_ERROR_CHECK(stabilizer_.init(i2c_.handle()));
     
-    rot_box.init();
+    shared_data.init();
 
-    xTaskCreatePinnedToCore(imu_task, "stabilizer", 4096, &imu_, 6, nullptr, 1);
-    xTaskCreatePinnedToCore(gait_task,       "gait",       4096, &base_,       5, nullptr, 0);
+    xTaskCreatePinnedToCore(stabilizer_task, "imu", 4096, &stabilizer_, 6, nullptr, 1);
+    xTaskCreatePinnedToCore(gait_task, "gait", 4096, &base_, 5, nullptr, 0);
 }

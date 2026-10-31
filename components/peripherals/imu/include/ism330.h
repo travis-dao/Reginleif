@@ -139,12 +139,6 @@ class Ism330: public IMU {
         /** Temperature relative to 25 C (reads 0 at 25 C): this is how the chip is calibrated. */
         esp_err_t readTemperature(float &temp_offset_c);
 
-        /* Temperature compensation terms. Argument is the offset from 25 C (0 at 25 C). */
-        float accelTempScale(float temp) const;
-        float accelTempOffset(float temp) const;   /* constant added to the reading */
-        float gyroTempScale(float temp) const;
-        float gyroTempOffset(float temp) const;    /* constant added to the reading */
-
         /* --- calibration (keep the board still; level for calibrateAccel) --- */
         esp_err_t calibrateGyro(uint16_t samples = 200);
         esp_err_t calibrateAccel(uint16_t samples = 200);   /* assumes level: x = y = 0 g, z = 1 g */

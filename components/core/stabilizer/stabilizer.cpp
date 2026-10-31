@@ -3,7 +3,6 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
-#include "rom/ets_sys.h"
 
 #include "types.h"
 #include "stabilizer.h"
@@ -11,6 +10,17 @@
 
 static constexpr float k_max_comp_deg = 15.0f;
 static constexpr float k_integral_max = 10.0f;
+
+Stabilizer::Stabilizer(const Config& config)
+    : target_angles_deg{0.0f, 0.0f, 0.0f},
+      gyro_dps{0.0f, 0.0f, 0.0f},
+      K_p(config.K_p),
+      K_i(config.K_i),
+      K_d(config.K_d),
+      integral_sum{0.0f, 0.0f, 0.0f}
+{
+    rot_mat = getRotationMatrix(Vec3{0.0f, 0.0f, 0.0f});   // identity until the first update
+}
 
 void Stabilizer::init(i2c_master_bus_handle_t bus) {
     // Initialize IMU and connect to I2C bus

@@ -45,6 +45,4 @@ struct SharedData {
                                    // that when the mailbox is stale, so Base sees "no IMU"
 };
 
-extern Mailbox<SharedData> shared_data;
-
 #endif

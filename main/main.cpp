@@ -9,6 +9,8 @@
 #include "rtos_utils.h"
 #include "stabilizer.h"
 
+Mailbox<SharedData> shared_data;
+
 static const char *TAG = "main";
 
 static void stabilizer_task(void *arg) {   
@@ -27,12 +29,9 @@ static void stabilizer_task(void *arg) {
         if (dt <= 0.0f || dt > 0.05f) dt = 0.005f;
 
         SharedData out{};
-        if (stabilizer->update(dt, out) == ESP_OK) {
-            out.stamp_us = now_us;
-            shared_data.publish(out);
-        } else {
-            ESP_LOGW(TAG, "IMU read failed");
-        }
+        stabilizer->update(dt, out);
+        out.stamp_us = now_us;
+        shared_data.publish(out);
 
         vTaskDelayUntil(&last_wake, period);
     }
@@ -68,8 +67,8 @@ extern "C" void app_main() {
     static Stabilizer stabilizer_({0.0f, 0.0f, 0.0f});
     static Base base_;
 
-    ESP_ERROR_CHECK(base_.init(i2c_.handle()));
-    ESP_ERROR_CHECK(stabilizer_.init(i2c_.handle()));
+    base_.init(i2c_.handle());
+    stabilizer_.init(i2c_.handle());
     
     shared_data.init();
 

@@ -17,7 +17,9 @@ constexpr uint8_t REG_WHO_AM_I = 0x0F;
 constexpr uint8_t REG_CTRL1_XL = 0x10;
 constexpr uint8_t REG_CTRL2_G  = 0x11;
 constexpr uint8_t REG_CTRL3_C  = 0x12;
+constexpr uint8_t REG_CTRL4_C  = 0x13;
 constexpr uint8_t REG_CTRL6_C  = 0x15;
+constexpr uint8_t REG_CTRL8_XL = 0x17;
 constexpr uint8_t REG_OUT_TEMP_L = 0x20;   /* burst: TEMP (2), GYRO X/Y/Z (6), ACCEL X/Y/Z (6) */
 
 /* CTRL3_C bits */
@@ -41,7 +43,7 @@ constexpr float   GYRO_DPS_PER_LSB[] = { 4.375e-3f, 8.75e-3f, 17.5e-3f, 35.0e-3f
 
 /* Empirical correction carried over from the original driver ("* 1.5 for scaling error").
    If you added it to compensate for something else, set it to 1.0f. */
-constexpr float GYRO_SCALE_CORRECTION = 1.5f;
+constexpr float GYRO_SCALE_CORRECTION = 1.0f;
 
 /* ODR register code (1..10) -> Hz, rounded */
 constexpr uint16_t ODR_HZ[] = { 0, 13, 26, 52, 104, 208, 417, 833, 1667, 3333, 6667 };
@@ -348,6 +350,9 @@ esp_err_t Ism330::configure(const Config &cfg)
     ESP_RETURN_ON_ERROR(setGyroFs(cfg.gyro_fs), TAG, "gyro fs");
     ESP_RETURN_ON_ERROR(setOdr(cfg.odr), TAG, "odr");
     ESP_RETURN_ON_ERROR(updateReg(REG_CTRL1_XL, XL_LPF2_EN, XL_LPF2_EN), TAG, "accel lpf2");
+    ESP_RETURN_ON_ERROR(updateReg(REG_CTRL4_C,  1 << 1, 1 << 1), TAG, "LPF1_SEL_G");
+    ESP_RETURN_ON_ERROR(updateReg(REG_CTRL6_C,  0x07,   0x03), TAG, "FTYPE");
+    ESP_RETURN_ON_ERROR(updateReg(REG_CTRL8_XL, 0xE0,   0x20), TAG, "ODR/10");
     ESP_RETURN_ON_ERROR(writeReg(REG_CTRL6_C, CTRL6_C_LPF), TAG, "gyro lpf");
 
     if (cfg.sample_rate_hz) {
@@ -464,16 +469,13 @@ esp_err_t Ism330::read(IMU::Data &d)
     /* 256 LSB/degC, reads 0 at 25 degC */
     const float t = r.temp / 256.0f;
 
-    const float as = 1.0f + accelTempScale(t), ao = accelTempOffset(t);
-    const float gs = 1.0f + gyroTempScale(t),  go = gyroTempOffset(t);
-
-    d.ax = ((r.ax * accel_g_per_lsb_ - accel_bias_[0]) + ao) * as;
-    d.ay = ((r.ay * accel_g_per_lsb_ - accel_bias_[1]) + ao) * as;
-    d.az = ((r.az * accel_g_per_lsb_ - accel_bias_[2]) + ao) * as;
-    d.gx = ((r.gx * gyro_dps_per_lsb_ - gyro_bias_[0]) + go) * gs;
-    d.gy = ((r.gy * gyro_dps_per_lsb_ - gyro_bias_[1]) + go) * gs;
-    d.gz = ((r.gz * gyro_dps_per_lsb_ - gyro_bias_[2]) + go) * gs;
-    d.temp_c = t + 25.0f;
+    d.ax = r.ax * accel_g_per_lsb_ - accel_bias_[0];
+    d.ay = r.ay * accel_g_per_lsb_ - accel_bias_[1];
+    d.az = r.az * accel_g_per_lsb_ - accel_bias_[2];
+    d.gx = r.gx * gyro_dps_per_lsb_ - gyro_bias_[0];
+    d.gy = r.gy * gyro_dps_per_lsb_ - gyro_bias_[1];
+    d.gz = r.gz * gyro_dps_per_lsb_ - gyro_bias_[2];
+    d.temp_c = r.temp / 256.0f + 25.0f;
     return ESP_OK;
 }
 
@@ -509,13 +511,6 @@ esp_err_t Ism330::readTemperature(float &temp_offset_c)
     temp_offset_c = le16(b) / 256.0f;
     return ESP_OK;
 }
-
-/* ---------- temperature compensation (argument: offset from 25 degC) ---------- */
-
-float Ism330::accelTempScale(float temp) const  { return temp * 0.00005f; }   /* 0.005 %/degC */
-float Ism330::accelTempOffset(float temp) const { return temp * 0.0001f; }    /* 0.1 mg/degC  */
-float Ism330::gyroTempScale(float temp) const   { return temp * 0.00007f; }   /* 0.007 %/degC */
-float Ism330::gyroTempOffset(float temp) const  { return temp * 0.005f; }     /* 0.005 dps/degC */
 
 /* ---------- calibration ---------- */
 

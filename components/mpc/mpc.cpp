@@ -1,8 +1,6 @@
 #include "mpc.h"
-#include "leg_controller.h"
-#include "types.h"
 #include "mpc_helper.h"
-#include "leg.h"
+// #include "leg.h"
 
 FootholdMpc::FootholdMpc(const Config& cfg) {
     this->cfg = cfg;
@@ -92,14 +90,14 @@ bool FootholdMpc::isCandidateValid(const State& state, const Vec3& candidate_foo
 
     // reject unreachable legs (ik)
     Theta3 servo_angles;
-    if (!Leg::IK(candidate_foothold_body_bf, servo_angles)) {
-        return false;
-    }
+    // if (!Leg::IK(candidate_foothold_body_bf, servo_angles)) {
+    //     return false;
+    // }
 
-    // reject bad angles
-    if (!Leg::outsideServoLimits(servo_angles, state.swing_leg)) {
-        return false;
-    }
+    // // reject bad angles
+    // if (!Leg::outsideServoLimits(servo_angles, state.swing_leg)) {
+    //     return false;
+    // }
 
     // Keep the candidate away from the other feet.
     for (int i = 0; i < 4; ++i) {

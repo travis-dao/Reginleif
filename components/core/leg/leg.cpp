@@ -3,10 +3,8 @@
 #include <algorithm>
 
 #include "leg.h"
-#include "base.h"
 #include "leg_controller.h"
 #include "servo.h"
-#include "types.h"
 
 constexpr float k_femur_length_mm = 122.64f;
 constexpr float k_tibia_length_mm = 34.66f + 147.03f;

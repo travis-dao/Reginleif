@@ -56,7 +56,7 @@ esp_err_t LegController::init(i2c_master_bus_handle_t bus) {
     return ESP_OK;
 }
 
-void LegController::update(float dt_s, const SharedData& shared_data) {
+void LegController::update(float dt_s) {
     // gait sequencing
     bool all_grounded = true;
     for (int i = 0; i < 4; i++) {
@@ -91,7 +91,7 @@ void LegController::update(float dt_s, const SharedData& shared_data) {
 
     // leg movement calculations
     for (int i = 0; i < 4; i++) {
-        this->legs_[i]->update(dt_s, shared_data, target_angles[i]);
+        this->legs_[i]->update(dt_s, target_angles[i]);
 
         // update servos (burst write)
         this->target_angles_buffer[i * 3 + 0] = this->target_angles[i].coxa;

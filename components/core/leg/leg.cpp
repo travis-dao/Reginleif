@@ -214,7 +214,7 @@ void Leg::updateSwing(const float dt_s) {
     }
 }
 
-void Leg::update(const float dt_s, const SharedData& shared_data, Theta3& out_target_angles_deg) {
+void Leg::update(const float dt_s, Theta3& out_target_angles_deg) {
 	// update target pos based on state
 	if (this->leg_state == SWING) {
 		updateSwing(dt_s);

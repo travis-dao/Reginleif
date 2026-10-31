@@ -64,7 +64,7 @@ class LegController {
     public:
         LegController();
 
-        void update(const float dt_s, const SharedData& shared_data);
+        void update(const float dt_s);
         esp_err_t init(i2c_master_bus_handle_t bus);
         
         bool isGrounded() { return this->grounded; }

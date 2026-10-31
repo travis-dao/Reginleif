@@ -69,5 +69,5 @@ void Base::update(const float dt_s, SharedData& shared_data) {
 
 	updateSpeed(dt_s);
 
-	this->leg_controller_.update(dt_s, shared_data);
+	this->leg_controller_.update(dt_s);
 }

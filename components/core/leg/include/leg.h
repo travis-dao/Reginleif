@@ -29,7 +29,7 @@ class Leg {
 
 		Leg(const Config& cfg);
 
-		void update(const float dt_s, const SharedData& shared_data, Theta3& out_target_angles_deg);
+		void update(const float dt_s, Theta3& out_target_angles_deg);
 		void startSwing(const Vec3& target_pos_lf);
 		void startStance(const Vec3& target_pos_lf);
 

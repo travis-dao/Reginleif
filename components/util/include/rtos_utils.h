@@ -33,7 +33,7 @@ class Mailbox {
 
 struct ImuData {
     int64_t stamp_us = 0;          // set by imu_task before publishing
-    Mat3 rot_mat = Mat3::Identity();
+    Mat3 rot_mat = Mat3::identity();
 
     // IMU, written by IMUWrapper
     Vec3 angles_rad { 0.0f, 0.0f, 0.0f};

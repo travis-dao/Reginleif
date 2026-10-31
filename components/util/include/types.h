@@ -19,8 +19,27 @@ struct Theta3 {
 template <typename T, std::size_t N>
 using Array = std::array<T, N>;
 
-// using Vec3 = Eigen::Vector3f;
-using Mat3 = Eigen::Matrix3f;
+struct Mat3 {
+    Array<Array<float, 3>, 3> data{};
+
+    constexpr auto& operator[](size_t i) {
+        return data[i];
+    }
+
+    constexpr const auto& operator[](size_t i) const {
+        return data[i];
+    }
+
+    static constexpr Mat3 identity() {
+        return Mat3{{
+            {
+                {1.0f, 0.0f, 0.0f},
+                {0.0f, 1.0f, 0.0f},
+                {0.0f, 0.0f, 1.0f}
+            }
+        }};
+    }
+};
 
 struct Vec3 {
 	float x, y, z = 0.0f;
@@ -40,7 +59,8 @@ struct Vec3 {
 	float dot(const Vec3& other) const;
 	float dot2D(const Vec3& other) const;
 	float cross2D(const Vec3& other) const;
-	Vec3 rotate(const Mat3& rot_mat);
+	Vec3 cross(const Vec3& other) const;
+	Vec3 rotate(const Mat3& rot_mat) const;
 };
 
 float dis(const float a, const float b);

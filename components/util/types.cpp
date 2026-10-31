@@ -72,11 +72,20 @@ float Vec3::cross2D(const Vec3& other) const {
     return x * other.y - y * other.x;
 }
 
-Vec3 Vec3::rotate(const Mat3& rot_mat) {
-    Eigen::Vector3f p(this->x, this->y, this->z);
-    Eigen::Vector3f result = rot_mat * p;
+Vec3 Vec3::rotate(const Mat3& rot_mat) const {
+    return Vec3{
+        rot_mat[0][0] * x + rot_mat[0][1] * y + rot_mat[0][2] * z,
+        rot_mat[1][0] * x + rot_mat[1][1] * y + rot_mat[1][2] * z,
+        rot_mat[2][0] * x + rot_mat[2][1] * y + rot_mat[2][2] * z
+    };
+}
 
-    return Vec3 {result.x(), result.y(), result.z()};
+Vec3 Vec3::cross(const Vec3& other) const {
+    return Vec3{
+        y * other.z - z * other.y,
+        z * other.x - x * other.z,
+        x * other.y - y * other.x
+    };
 }
 
 Vec3 clamp_vec3(const Vec3& v, float min_val, float max_val) {

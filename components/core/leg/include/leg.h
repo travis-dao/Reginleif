@@ -2,6 +2,7 @@
 #define LEG_h
 
 #include "pca9685.h"
+#include "rtos_utils.h"
 #include "types.h"
 
 enum LegState {
@@ -28,20 +29,19 @@ class Leg {
 
 		Leg(const Config& cfg);
 
-		void update(const float dt_s, Theta3& out_target_angles_deg);
+		void update(const float dt_s, Theta3& out_target_angles_deg, const ImuData& imu_data);
 		void startSwing(const Vec3& target_pos_lf);
 		void startStance(const Vec3& target_pos_lf);
 
 		static bool IK(Vec3 target_foot_pos_lf, Theta3& out_angles_deg);
 		static bool outsideServoLimits(const Theta3& angles_deg, const int id);
 
-		void setState(const LegState state) { this->leg_state = state; }
-
 		bool isGrounded() const { return this->leg_state != SWING; }
-		
-        float getSwingPhase() const { return this->swing_phase; }
+
 		Vec3 getNominalLandingPos() const;
 		Vec3 getCurrentLegPos() const { return this->pos_state.foot_curr_pos_lf; }
+
+		void pidCorrection(const ImuData& imu_data);
 
 	private:
 		Theta3 servo_angles_deg;
@@ -58,6 +58,7 @@ class Leg {
 		Theta3 clampToLimits(const Theta3& angles_deg);
 		void moveLeg();
 
+		void setState(const LegState state) { this->leg_state = state; }
 		void updateSwing(const float dt_s);
 		void updateStance(const float dt_s);
 };

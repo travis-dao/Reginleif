@@ -31,10 +31,8 @@ class Mailbox {
         QueueHandle_t q_ = nullptr;
 };
 
-struct SharedData {
+struct ImuData {
     int64_t stamp_us = 0;          // set by imu_task before publishing
-    float   current_speed_mm_s = 0.0f;  // set by Base for the legs (already used)
-
     Mat3 rot_mat = Mat3::Identity();
 
     // IMU, written by IMUWrapper

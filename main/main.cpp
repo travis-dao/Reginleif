@@ -9,7 +9,7 @@
 #include "rtos_utils.h"
 #include "stabilizer.h"
 
-Mailbox<SharedData> shared_data;
+Mailbox<ImuData> imu_data;
 
 static const char *TAG = "main";
 
@@ -28,10 +28,10 @@ static void stabilizer_task(void *arg) {
         // Guard against a bad dt (first iteration, or a long stall)
         if (dt <= 0.0f || dt > 0.05f) dt = 0.005f;
 
-        SharedData out{};
+        ImuData out{};
         stabilizer->update(dt, out);
         out.stamp_us = now_us;
-        shared_data.publish(out);
+        imu_data.publish(out);
 
         vTaskDelayUntil(&last_wake, period);
     }
@@ -49,8 +49,8 @@ static void gait_task(void *arg) {
         float dt = (now_us - last_us) * 1e-6f;
         last_us = now_us;
 
-        SharedData c{};                                   // identity default
-        if (!shared_data.read(c, 30000)) c = SharedData{};    // stale -> no correction
+        ImuData c{};                                   // identity default
+        if (!imu_data.read(c, 30000)) c = ImuData{};    // stale -> no correction
 
         base->update(dt, c);
 
@@ -70,7 +70,7 @@ extern "C" void app_main() {
     base_.init(i2c_.handle());
     stabilizer_.init(i2c_.handle());
     
-    shared_data.init();
+    imu_data.init();
 
     xTaskCreatePinnedToCore(stabilizer_task, "imu", 4096, &stabilizer_, 6, nullptr, 1);
     xTaskCreatePinnedToCore(gait_task, "gait", 4096, &base_, 5, nullptr, 0);

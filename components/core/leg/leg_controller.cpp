@@ -1,6 +1,5 @@
 #include "leg_controller.h"
 #include "servo.h"
-#include "types.h"
 
 const float k_num_servos = 12;
 
@@ -47,7 +46,7 @@ void LegController::init(i2c_master_bus_handle_t bus) {
     vTaskDelay(pdMS_TO_TICKS(500));
 }
 
-void LegController::update(float dt_s) {
+void LegController::update(float dt_s, const ImuData& imu_data) {
     // gait sequencing
     bool all_grounded = true;
     for (int i = 0; i < 4; i++) {
@@ -82,7 +81,7 @@ void LegController::update(float dt_s) {
 
     // leg movement calculations
     for (int i = 0; i < 4; i++) {
-        this->legs_[i]->update(dt_s, target_angles[i]);
+        this->legs_[i]->update(dt_s, target_angles[i], imu_data);
 
         // update servos (burst write)
         this->target_angles_buffer[i * 3 + 0] = this->target_angles[i].coxa;

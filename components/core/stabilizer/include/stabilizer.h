@@ -16,7 +16,7 @@ class Stabilizer {
 
         Stabilizer(const Config& config);
         void init(i2c_master_bus_handle_t bus);
-        void update(const float dt_s, SharedData& out);
+        void update(const float dt_s, ImuData& out);
 
         Vec3 getAngles() const { return Vec3 { angles_deg.roll, -angles_deg.pitch, 0.0f }; }
         Vec3 getGyro()   const { return gyro_dps; }

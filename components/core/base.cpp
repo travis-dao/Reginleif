@@ -1,5 +1,3 @@
-#include "rtos_utils.h"
-#include "types.h"
 #include "base.h"
 
 float SPEED_LERP_RATE = 4.0f;
@@ -14,7 +12,7 @@ void Base::init(i2c_master_bus_handle_t bus) {
     this->leg_controller_.init(bus);
 }
 
-void Base::updateInput(Vec3 input) {
+void Base::updateInput(const Vec3 input) {
 	this->input = input;
 	
 	state = this->input.x > 0.0f ? WALK : REST;
@@ -50,11 +48,10 @@ void Base::updateSpeed(const float dt_s) {
 	}
 }
 
-void Base::update(const float dt_s, SharedData& shared_data) {
-	shared_data.current_speed_mm_s = this->current_speed_mm_s;
-	this->target_orientation_rad = shared_data.angles_rad;
+void Base::update(const float dt_s, const ImuData& imu_data) {
+	this->target_orientation_rad = imu_data.angles_rad * k_rad_to_deg;
 
 	updateSpeed(dt_s);
 
-	this->leg_controller_.update(dt_s);
+	this->leg_controller_.update(dt_s, imu_data);
 }

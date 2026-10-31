@@ -4,6 +4,7 @@
 #include "leg.h"
 #include "pca9685.h"
 #include "foothold_planner.h"
+#include "rtos_utils.h"
 
 namespace Movement {
     constexpr float k_step_length_mm = 150.0f;
@@ -64,7 +65,7 @@ class LegController {
     public:
         LegController();
 
-        void update(const float dt_s);
+        void update(const float dt_s, const ImuData& imu_data);
         void init(i2c_master_bus_handle_t bus);
         
         bool isGrounded() { return this->grounded; }

@@ -12,8 +12,8 @@ class Base {
 		};
 
 		Base();
-		void init(i2c_master_bus_handle_t bus_);
-		void update(const float dt_s, SharedData& shared_data);
+		void init(const i2c_master_bus_handle_t bus_);
+		void update(const float dt_s, const ImuData& imu_data);
 		
 		float getSpeed() { return this->current_speed_mm_s; }
 		Vec3 getTargetOrientation() { return this->target_orientation_rad; }
@@ -26,7 +26,7 @@ class Base {
 		LegController leg_controller_;
 		Vec3 input;
 
-		void updateInput(Vec3 input);
+		void updateInput(const Vec3 input);
 		void updateSpeed(const float dt_s);
 };
 

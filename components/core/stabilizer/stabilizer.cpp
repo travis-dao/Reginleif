@@ -94,12 +94,13 @@ void Stabilizer::updatePID(float dt_s, const Vec3& angles_in_deg, const Vec3& gy
     this->rot_mat = getRotationMatrix(comp_deg * k_deg_to_rad);
 }
 
-void Stabilizer::update(const float dt_s, SharedData& out_data) {
+void Stabilizer::update(const float dt_s, ImuData& out_data) {
     updateImu();
 
     updatePID(dt_s, getAngles(), getGyro());
 
     out_data.rot_mat = this->rot_mat;
+    out_data.valid = true;
 }
 
 Mat3 Stabilizer::getRotationMatrix(const Vec3& a) {

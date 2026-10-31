@@ -1,6 +1,7 @@
 #include "leg.h"
 #include "leg_controller.h"
 #include "servo.h"
+#include "types.h"
 
 constexpr float k_femur_length_mm = 122.64f;
 constexpr float k_tibia_length_mm = 34.66f + 147.03f;
@@ -10,10 +11,10 @@ constexpr float k_body_coxa_z_mm = 0.0f;
 const float c_max = k_femur_length_mm + k_tibia_length_mm;
 const float c_min = fabsf(k_femur_length_mm - k_tibia_length_mm);
 
-extern bool isRightLeg(const int id) {
+static bool isRightLeg(const int id) {
 	return id == 1 || id == 2;
 }
-extern bool isFrontLeg(const int id) {
+static bool isFrontLeg(const int id) {
 	return id == 0 || id == 1;
 }
 
@@ -208,12 +209,13 @@ void Leg::updateSwing(const float dt_s) {
     }
 }
 
-void Leg::update(const float dt_s, Theta3& out_target_angles_deg) {
+void Leg::update(const float dt_s, Theta3& out_target_angles_deg, const ImuData& imu_data) {
 	// update target pos based on state
 	if (this->leg_state == SWING) {
 		updateSwing(dt_s);
 	} else if (this->leg_state == STANCE) {
 		updateStance(dt_s);
+		pidCorrection(imu_data);
 	} else {
 		this->pos_state.foot_target_pos_lf = Offset::neutral_foot_pos_lf[this->id]; // TODO: CHANGE LATER
 	}
@@ -231,4 +233,10 @@ Vec3 Leg::getNominalLandingPos() const {
 	foot_end_target_lf.x = Offset::neutral_foot_pos_lf[this->id].x + Movement::k_step_length_mm / 2.0f;
 
 	return foot_end_target_lf;
+}
+
+void Leg::pidCorrection(const ImuData& imu_data) {
+	if (imu_data.valid) {
+		this->pos_state.foot_target_pos_lf.rotate(imu_data.rot_mat);
+	}
 }

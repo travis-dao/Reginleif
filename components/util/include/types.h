@@ -16,6 +16,12 @@ struct Theta3 {
   	float coxa, femur, tibia;
 };
 
+template <typename T, std::size_t N>
+using Array = std::array<T, N>;
+
+// using Vec3 = Eigen::Vector3f;
+using Mat3 = Eigen::Matrix3f;
+
 struct Vec3 {
 	float x, y, z = 0.0f;
 
@@ -34,15 +40,9 @@ struct Vec3 {
 	float dot(const Vec3& other) const;
 	float dot2D(const Vec3& other) const;
 	float cross2D(const Vec3& other) const;
+	Vec3 rotate(const Mat3& rot_mat);
 };
 
 float dis(const float a, const float b);
-
-template <typename T, std::size_t N>
-using Array = std::array<T, N>;
-
-// using Vec3 = Eigen::Vector3f;
-using Mat3 = Eigen::Matrix3f;
-
 
 #endif

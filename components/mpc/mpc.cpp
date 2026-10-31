@@ -1,8 +1,10 @@
 #include "mpc.h"
-#include "leg_controller.h"
-#include "types.h"
 #include "mpc_helper.h"
-#include "leg.h"
+#include <cstdio>
+// #include "leg.h"
+
+int count = 0;
+float s = -1;
 
 FootholdMpc::FootholdMpc(const Config& cfg) {
     this->cfg = cfg;
@@ -31,6 +33,7 @@ FootholdMpc::Result FootholdMpc::planFoothold(const State& state) const {
         }
 
         for (int j = 0; j < this->cfg.candidate_count_y; ++j) {
+            count++;
             float dy = 0.0f;
 
             if (this->cfg.candidate_count_y > 1) {
@@ -48,6 +51,7 @@ FootholdMpc::Result FootholdMpc::planFoothold(const State& state) const {
             }
 
             float cost = scoreCandidate(state, candidate);
+            // printf("cand %d stab=%.3f move=%.3f\n", count, s, cost - s);
 
             if (!std::isfinite(cost)) {
                 continue;
@@ -68,6 +72,7 @@ float FootholdMpc::scoreCandidate(const State& state, const Vec3& candidate_foot
     // J_s
     Vec3 com = calculateCenterOfMass(components.size(), components.data());
     float stability_term = this->cfg.stability_weight * calculateStabilityCost(state, com, candidate_foothold_body_bf, this->cfg.target_stability_margin_mm);
+    s = stability_term;
 
     // J_m
     Vec3 delta = candidate_foothold_body_bf - state.nominal_foothold_bf;
@@ -92,14 +97,14 @@ bool FootholdMpc::isCandidateValid(const State& state, const Vec3& candidate_foo
 
     // reject unreachable legs (ik)
     Theta3 servo_angles;
-    if (!Leg::IK(candidate_foothold_body_bf, servo_angles)) {
-        return false;
-    }
+    // if (!Leg::IK(candidate_foothold_body_bf, servo_angles)) {
+    //     return false;
+    // }
 
-    // reject bad angles
-    if (!Leg::outsideServoLimits(servo_angles, state.swing_leg)) {
-        return false;
-    }
+    // // reject bad angles
+    // if (!Leg::outsideServoLimits(servo_angles, state.swing_leg)) {
+    //     return false;
+    // }
 
     // Keep the candidate away from the other feet.
     for (int i = 0; i < 4; ++i) {

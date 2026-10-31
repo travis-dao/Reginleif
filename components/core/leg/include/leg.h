@@ -3,7 +3,6 @@
 
 #include "pca9685.h"
 #include "types.h"
-#include "stabilizer.h"
 
 enum LegState {
  	HOLD, SWING, STANCE

@@ -13,6 +13,9 @@ constexpr float k_tibia_length_mm = 34.66f + 147.03f;
 constexpr float k_body_coxa_x_mm = 28.58f;
 constexpr float k_body_coxa_z_mm = 0.0f;
 
+const float c_max = k_femur_length_mm + k_tibia_length_mm;
+const float c_min = fabsf(k_femur_length_mm - k_tibia_length_mm);
+
 extern bool isRightLeg(const int id) {
 	return id == 1 || id == 2;
 }
@@ -30,11 +33,16 @@ Leg::Leg(const Config& cfg):
 	this->pos_state = {
 		.foot_curr_pos_lf = neutral_foot_pos_lf,
 		.foot_target_pos_lf = neutral_foot_pos_lf,
-		.foot_last_grounded_pos_lf = neutral_foot_pos_lf,
-		.foot_offset_lf = Vec3 {0.0f, 0.0f, 0.0f}
+
+		.swing_start_pos_lf = neutral_foot_pos_lf,
+		.swing_target_pos_lf = neutral_foot_pos_lf,
+
+		.stance_start_pos_lf = neutral_foot_pos_lf,
+		.stance_target_pos_lf = neutral_foot_pos_lf
 	};
 
 	this->swing_phase = 0.0f;
+	this->stance_phase = 0.0f;
 	this->leg_state = HOLD;
 
 	moveLeg();
@@ -49,7 +57,7 @@ Theta3 Leg::invertAngles(const Theta3& angles_deg) {
 }
 
 Theta3 Leg::clampToLimits(const Theta3& angles_deg) {
-	const LegServoLimits& lim = ServoConfig::limits[id];
+	const LegServoLimits& lim = ServoConfig::limits[this->id];
 
 	return Theta3 {
 		lim.coxa.clamp(angles_deg.coxa),
@@ -58,7 +66,17 @@ Theta3 Leg::clampToLimits(const Theta3& angles_deg) {
 	};
 }
 
-Theta3 Leg::IK(Vec3 target_foot_pos_lf) {
+bool Leg::outsideServoLimits(const Theta3& angles_deg, const int id) {
+	const LegServoLimits& lim = ServoConfig::limits[id];
+
+	if (angles_deg.coxa > lim.coxa.max_deg || angles_deg.coxa < lim.coxa.min_deg) return false;
+	if (angles_deg.femur > lim.femur.max_deg || angles_deg.femur < lim.femur.min_deg) return false;
+	if (angles_deg.tibia > lim.tibia.max_deg || angles_deg.tibia < lim.tibia.min_deg) return false;
+	
+	return true;
+}
+
+bool Leg::IK(Vec3 target_foot_pos_lf, Theta3& out_angles_deg) {
 	Theta3 target_angles_deg;
 
 	// dis to target pos on x-y plane
@@ -74,6 +92,11 @@ Theta3 Leg::IK(Vec3 target_foot_pos_lf) {
 	float c_squared = c * c;
 	float a_squared = k_femur_length_mm * k_femur_length_mm;
 	float b_squared = k_tibia_length_mm * k_tibia_length_mm;
+
+	// reachability check
+	if (c > c_max + k_epsilon || c < c_min - k_epsilon || c < k_epsilon) {
+		return false;  // unreachable, leave out_angles_deg untouched
+	}
 
 	// calculate femur servo
 	float cos2 = std::clamp(
@@ -94,77 +117,114 @@ Theta3 Leg::IK(Vec3 target_foot_pos_lf) {
 	target_angles_deg.femur = atan2f(r, -target_foot_pos_lf.z) * k_rad_to_deg + acosf(cos2) * k_rad_to_deg; // femur
 	target_angles_deg.tibia = acosf(cos3) * k_rad_to_deg; // tibia
 
-	return target_angles_deg;
+	out_angles_deg = target_angles_deg;
+	return true;
 }
 
 void Leg::moveLeg() {
 	// flip y pos
-	Vec3 adjusted_target_pos_lf = this->pos_state.foot_target_pos_lf + this->pos_state.foot_offset_lf;
+	Vec3 adjusted_target_pos_lf = this->pos_state.foot_target_pos_lf;
 	adjusted_target_pos_lf.y *= isRightLeg(id) ? -1.0f : 1.0f;
 
-	// check to flip angles for reverse mounted servos (leg side)
-	Theta3 target_angles_deg = IK(adjusted_target_pos_lf);
+	Theta3 target_angles_deg;
+	bool reachable = IK(adjusted_target_pos_lf, target_angles_deg);
 
-	if (!isRightLeg(id)) {
-		target_angles_deg = invertAngles(target_angles_deg);
+	if (reachable) {
+		// flip angles for reverse mounted servos (leg side)
+		if (!isRightLeg(id)) {
+			target_angles_deg = invertAngles(target_angles_deg);
+		}
+
+		// clamp servos to calibrated limits
+		target_angles_deg = clampToLimits(target_angles_deg);
+		
+		// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->id, target_angles.coxa, target_angles.femur, target_angles.tibia);
+
+		// update members
+		this->servo_angles_deg = target_angles_deg;
 	}
-
-	// clamp servos to calibrated limits
-	target_angles_deg = clampToLimits(target_angles_deg);
-	
-	// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->id, target_angles.coxa, target_angles.femur, target_angles.tibia);
-
-	// update members
-	this->servo_angles_deg = target_angles_deg;
 }
 
-void Leg::updateStance(const float dt_s, const SharedData& shared_data) {
-	// reset swing_phase for swing state
-	this->swing_phase = 0.0f;
-
-	// move leg backwards at body's current speed
-	this->pos_state.foot_target_pos_lf.x += shared_data.current_speed_mm_s * dt_s * -1.0f;
+void Leg::startSwing(const Vec3& target_pos_lf) {
+    this->pos_state.swing_start_pos_lf = this->pos_state.foot_target_pos_lf;
+    this->pos_state.swing_target_pos_lf = target_pos_lf;
+    this->swing_phase = 0.0f;
+    setState(SWING);
 }
 
-void Leg::updateSwing(const float dt_s, const float step_length_mm, const float step_height_mm) {
-	// swing done -> move to stance swing_phase
-	if (this->swing_phase >= 1.0f) {
-		setState(STANCE);
-		return;
-	}
+void Leg::startStance(const Vec3& target_pos_lf) {
+    this->pos_state.stance_start_pos_lf = this->pos_state.foot_target_pos_lf;
+    this->pos_state.stance_target_pos_lf = target_pos_lf;
+    this->stance_phase = 0.0f;
+    setState(STANCE);
+}
 
-	// x = velocity-based
-	float velocity_x_mm_s = (PI * step_length_mm / (2.0f * Movement::k_swing_duration_s)) * sinf(PI * this->swing_phase);
-	this->pos_state.foot_target_pos_lf.x += velocity_x_mm_s * dt_s;
+void Leg::updateStance(const float dt_s) {
+	this->stance_phase += dt_s / (Movement::k_swing_duration_s * 3.0f);
 
-	// z = position-based, add on top of whatever update_orientation() just set
-	this->pos_state.foot_target_pos_lf.z = Offset::neutral_foot_pos_lf[this->id].z + step_height_mm * sinf(PI * this->swing_phase);
+    if (this->stance_phase > 1.0f) {
+        this->stance_phase = 1.0f;
+    }
 
-	// advance swing_phase
-	this->swing_phase += dt_s / Movement::k_swing_duration_s;
-	if (this->swing_phase > 1.0f) this->swing_phase = 1.0f;
+    const float t = this->stance_phase;
+
+    const Vec3& start = this->pos_state.stance_start_pos_lf;
+    const Vec3& target = this->pos_state.stance_target_pos_lf;
+
+    // smooth horizontal interpolation
+    const float alpha = t * t * (3.0f - 2.0f * t);
+
+	this->pos_state.foot_target_pos_lf = start + (target - start) * alpha;
+
+    if (t >= 1.0f) {
+        // ensure the final target is exact
+        this->pos_state.foot_target_pos_lf = target;
+    }
+}
+
+void Leg::updateSwing(const float dt_s) {
+    // advance and clamp swing progress
+    this->swing_phase += dt_s / Movement::k_swing_duration_s;
+
+    if (this->swing_phase > 1.0f) {
+        this->swing_phase = 1.0f;
+    }
+
+    const float t = this->swing_phase;
+
+    const Vec3& start = this->pos_state.swing_start_pos_lf;
+    const Vec3& target = this->pos_state.swing_target_pos_lf;
+
+    // smooth horizontal interpolation
+    const float alpha = t * t * (3.0f - 2.0f * t);
+
+    this->pos_state.foot_target_pos_lf.x = start.x + alpha * (target.x - start.x);
+    this->pos_state.foot_target_pos_lf.y = start.y + alpha * (target.y - start.y);
+
+    // lift the foot above the start-to-target line
+    const float clearance = Movement::k_step_height_mm * sinf(k_pi * t);
+    this->pos_state.foot_target_pos_lf.z = (start.z + t * (target.z - start.z)) + clearance;
+
+    if (t >= 1.0f) {
+        // ensure the final target is exact
+        this->pos_state.foot_target_pos_lf = target;
+		Vec3 foot_end_target_lf = this->pos_state.swing_start_pos_lf;
+		foot_end_target_lf.x = Offset::neutral_foot_pos_lf[this->id].x - Movement::k_step_length_mm / 2.0f;
+		startStance(foot_end_target_lf);
+    }
 }
 
 void Leg::update(const float dt_s, const SharedData& shared_data, Theta3& out_target_angles_deg) {
-	// 1. update target pos based on state
+	// update target pos based on state
 	if (this->leg_state == SWING) {
-		// calc step length from where leg lifts
-		float target_pos_x_lf = Offset::neutral_foot_pos_lf[this->id].x + (Movement::k_step_length_mm / 2.0f);
-		float adjusted_step_length_mm = target_pos_x_lf - this->pos_state.foot_last_grounded_pos_lf.x;
-
-		updateSwing(dt_s, adjusted_step_length_mm, Movement::k_step_height_mm);
+		updateSwing(dt_s);
 	} else if (this->leg_state == STANCE) {
-		updateStance(dt_s, shared_data);
+		updateStance(dt_s);
 	} else {
 		this->pos_state.foot_target_pos_lf = Offset::neutral_foot_pos_lf[this->id]; // TODO: CHANGE LATER
 	}
 
-	// 2. while grounded, update pos to calculate proper step length
-	if (isGrounded()) {
-		this->pos_state.foot_last_grounded_pos_lf = this->pos_state.foot_target_pos_lf;
-	}
-
-	// 3. move servos based on target pos
+	// IK stuff
 	moveLeg();
 
 	// update variables
@@ -172,19 +232,9 @@ void Leg::update(const float dt_s, const SharedData& shared_data, Theta3& out_ta
 	out_target_angles_deg = this->servo_angles_deg;
 }
 
-float Leg::getSwingTimeRemainingS() const {
-	if (this->leg_state != SWING) return 0.0f;
-	return (1.0f - this->swing_phase) * Movement::k_swing_duration_s;
-}
+Vec3 Leg::getNominalLandingPos() const {
+	Vec3 foot_end_target_lf = this->pos_state.swing_start_pos_lf;
+	foot_end_target_lf.x = Offset::neutral_foot_pos_lf[this->id].x + Movement::k_step_length_mm / 2.0f;
 
-// Touchdown point of the current swing, leg frame. updateSwing() integrates x so the swing ends at
-// foot_neutral.x + k_step_length_mm/2 (that is what `adjusted_step_length_mm` works out to), and z
-// returns to the neutral z (sin(pi*1) = 0). y is not changed by the gait.
-Vec3 Leg::getSwingEndTarget() const {
-	Vec3 foot_end_target_lf = this->pos_state.foot_target_pos_lf;
-	if (this->leg_state == SWING) {
-		foot_end_target_lf.x = Offset::neutral_foot_pos_lf[this->id].x + Movement::k_step_length_mm / 2.0f;
-		foot_end_target_lf.z = Offset::neutral_foot_pos_lf[this->id].z;
-	}
-	return foot_end_target_lf + this->pos_state.foot_offset_lf;
+	return foot_end_target_lf;
 }

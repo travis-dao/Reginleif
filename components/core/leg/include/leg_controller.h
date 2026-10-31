@@ -3,9 +3,10 @@
 
 #include "leg.h"
 #include "pca9685.h"
+#include "mpc.h"
 
 namespace Movement {
-    constexpr float k_step_length_mm = 0.0f;
+    constexpr float k_step_length_mm = 150.0f;
     constexpr float k_step_height_mm = 100.0f;
     constexpr float k_swing_duration_s = 0.250f;
     
@@ -72,12 +73,10 @@ class LegController {
         Array<Vec3, 4> footPositionsBody() const;
         Array<Vec3, 4> landingTargetsBody() const;
 
-        void predictFootContacts(float dt_step, bool* out, int n_steps) const;
-        void setFootCorrections(const Array<Vec3, 4> delta_mm);
-
     private:
         Leg* legs_[4];
 		Pca9685 servo_driver_;
+        FootholdMpc mpc_;
 
         Array<Theta3, 4> target_angles;
         float target_angles_buffer[12];

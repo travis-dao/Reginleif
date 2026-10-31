@@ -1,10 +1,23 @@
 #include "leg_controller.h"
+#include "mpc.h"
 #include "servo.h"
+#include "types.h"
 #include <algorithm>
 
 const float k_num_servos = 12;
 
-LegController::LegController() {
+// Leg-frame foot position -> true body-frame position
+Vec3 legToBodyFrame(int leg, const Vec3& foot_pos_lf) {
+	return Offset::leg_base_pos_bf[leg] + foot_pos_lf;
+}
+
+Vec3 bodyToLegFrame(int leg, const Vec3& foot_pos_bf) {
+	return foot_pos_bf - Offset::leg_base_pos_bf[leg];
+}
+
+LegController::LegController()
+    : mpc_()
+{
     for (int i = 0; i < 4; i++) {
         legs_[i] = nullptr;
     }
@@ -54,19 +67,33 @@ void LegController::update(float dt_s, const SharedData& shared_data) {
     }
     this->grounded = all_grounded;
 
+    // only start next swing sequence if all legs are grounded
     if (this->grounded) {
+        // get next leg
         int next = Movement::next_leg_gait[this->swing_leg + 1];
         this->swing_leg = next;
-        legs_[next]->setState(SWING);
+
+        Vec3 nominal_landing_pos_bf = legToBodyFrame(next, this->legs_[next]->getNominalLandingPos());
+
+        // run foot plan MPC
+        const auto result = this->mpc_.planFoothold({
+            .current_foot_positions_bf = footPositionsBody(),
+            .swing_leg = next,
+            .nominal_foothold_bf = nominal_landing_pos_bf
+        });
+
+        // valid result?
+        const Vec3 landing_pos_bf = result.valid ? result.foothold_bf : nominal_landing_pos_bf;
+
+        // start swing sequence of target leg
+        this->legs_[next]->startSwing(bodyToLegFrame(next, landing_pos_bf));
     }
 
     // leg movement calculations
     for (int i = 0; i < 4; i++) {
         this->legs_[i]->update(dt_s, shared_data, target_angles[i]);
-    }
 
-    // update servos (burst write)
-    for (int i = 0; i < 4; ++i) {
+        // update servos (burst write)
         this->target_angles_buffer[i * 3 + 0] = this->target_angles[i].coxa;
         this->target_angles_buffer[i * 3 + 1] = this->target_angles[i].femur;
         this->target_angles_buffer[i * 3 + 2] = this->target_angles[i].tibia;
@@ -74,22 +101,11 @@ void LegController::update(float dt_s, const SharedData& shared_data) {
     servoSetAngles(this->servo_driver_, this->target_angles_buffer, k_num_servos);
 }
 
-// Everything here is mm, body frame (x forward, y left, z up, origin at the body center)
-
-
-// Leg-frame foot position -> true body-frame position
-Vec3 legToBodyFrame(int leg, const Vec3& foot_leg_lf) {
-	return Offset::leg_base_pos_bf[leg] + foot_leg_lf;
-}
-
-
-
-// Where each foot is now: the commanded target (FK of the commanded angles; you have no measured
-// ones). Includes any correction set through setFootCorrections().
+// current foot pos, body frame
 Array<Vec3, 4> LegController::footPositionsBody() const {
 	Array<Vec3, 4> out;
 	for (int i = 0; i < 4; ++i) {
-        out[i] = legToBodyFrame(i, this->legs_[i]->getFootTarget());
+        out[i] = legToBodyFrame(i, this->legs_[i]->getCurrentLegPos());
     }
 	return out;
 }
@@ -101,50 +117,9 @@ Array<Vec3, 4> LegController::landingTargetsBody() const {
 	for (int i = 0; i < 4; ++i) {
 		const Vec3 foot_pos_lf = 
             (i == this->swing_leg) 
-            ? this->legs_[i]->getSwingEndTarget() 
-            : this->legs_[i]->getFootTarget();
+            ? this->legs_[i]->getNominalLandingPos() 
+            : this->legs_[i]->getCurrentLegPos();
 		out[i] = legToBodyFrame(i, foot_pos_lf);
 	}
 	return out;
-}
-
-// Contact schedule. Your gait lifts one leg at a time, each for k_swing_duration_s, in the order given
-// by Movement::next_leg_gait (FL -> BR -> FR -> BL). out[k*4 + leg] is true if that foot is down
-// during step k of length dt_step.
-void LegController::predictFootContacts(float dt_step, bool* out, int n_steps) const {
-    // nothing airborne: all feet down
-	if (this->swing_leg < 0) {
-		for (int i = 0; i < n_steps * 4; ++i) {
-            out[i] = true;
-        }
-		return;
-	}
-
-    // when it lands
-	const float first_end = this->legs_[this->swing_leg]->getSwingTimeRemainingS();
-
-	for (int k = 0; k < n_steps; ++k) {
-		const float t_mid = (k + 0.5f) * dt_step;
-
-		int airborne = this->swing_leg;
-		float end = first_end;
-
-        // walk the swing chain forward in time
-		while (t_mid >= end) {
-			airborne = Movement::next_leg_gait[airborne + 1]; // table is indexed by leg + 1
-			end += Movement::k_swing_duration_s;
-		}
-
-		for (int i = 0; i < 4; ++i) {
-            out[k * 4 + i] = (i != airborne);
-        }
-	}
-}
-
-// Per-foot corrections from the MPC mapper. Pushed straight into each Leg, which adds the offset to
-// its foot target before IK; leg_controller.cpp's update() needs no changes.
-void LegController::setFootCorrections(const Array<Vec3, 4> delta_mm) {
-	for (int i = 0; i < 4; ++i) {
-		this->legs_[i]->setFootOffset(delta_mm[i]);
-	}
 }

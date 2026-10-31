@@ -1,3 +1,4 @@
+#include <cmath>
 #include <math.h>
 #include <algorithm>
 #include <cstdio>
@@ -60,6 +61,22 @@ void Vec3::println() const {
 	printf("\n");
 }
 
+float Vec3::dis(const Vec3& other) const {
+	Vec3 diff = *this - other;
+    return std::sqrt( diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+}
+
+float Vec3::dot(const Vec3& other) const {
+    return x * other.x + y * other.y + z * other.z;
+}
+float Vec3::dot2D(const Vec3& other) const {
+    return x * other.x + y * other.y;
+}
+
+float Vec3::cross2D(const Vec3& other) const {
+    return x * other.y - y * other.x;
+}
+
 Vec3 clamp_vec3(const Vec3& v, float min_val, float max_val) {
 	return Vec3 {
 		std::clamp(v.x, min_val, max_val),
@@ -69,3 +86,7 @@ Vec3 clamp_vec3(const Vec3& v, float min_val, float max_val) {
 }
 
 #pragma endregion
+
+float dis(const float a, const float b) {
+	return std::sqrt(a * a + b * b);
+}

@@ -47,7 +47,7 @@ class FootholdMpc {
 
             // Relative penalty for moving away from the nominal foothold
             // Larger values produce smaller landing-position adjustments
-            float movement_weight = 1.0f;
+            float movement_weight = 0.01f;
 
             // Relative penalty for predicted roll & pitch
             float tilt_weight = 1.0f;

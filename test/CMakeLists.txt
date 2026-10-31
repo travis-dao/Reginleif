@@ -11,11 +11,15 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 
 add_library(mpc_host
     ${COMP}/mpc/mpc.cpp
+    ${COMP}/util/types.cpp
+    # ${COMP}/core/leg/leg.cpp
 )
 
 target_include_directories(mpc_host PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/stubs
     ${COMP}/mpc/include
     ${COMP}/util/include
+    ${COMP}/core/leg/include
 )
 
 target_link_libraries(mpc_host PUBLIC Eigen3::Eigen)

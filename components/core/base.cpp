@@ -2,6 +2,7 @@
 #include <math.h>
 #include <new>
 
+#include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/projdefs.h"
 #include "rtos_utils.h"
@@ -17,14 +18,8 @@ Base::Base() {
 	this->target_orientation_rad = Vec3{0.0f, 0.0f, 0.0f};
 }
 
-esp_err_t Base::init(i2c_master_bus_handle_t bus) {
-    esp_err_t err = this->leg_controller_.init(bus);
-
-    if (err != ESP_OK) {
-        return err;
-    }
-
-	return ESP_OK;
+void Base::init(i2c_master_bus_handle_t bus) {
+    this->leg_controller_.init(bus);
 }
 
 void Base::updateInput(Vec3 input) {

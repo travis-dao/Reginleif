@@ -15,15 +15,15 @@ class Stabilizer {
         };
 
         Stabilizer(const Config& config);
-        esp_err_t init(i2c_master_bus_handle_t bus);
-        esp_err_t update(const float dt_s, SharedData& out);
+        void init(i2c_master_bus_handle_t bus);
+        void update(const float dt_s, SharedData& out);
 
         Vec3 getAngles() const { return Vec3 { angles_deg.roll, -angles_deg.pitch, 0.0f }; }
         Vec3 getGyro()   const { return gyro_dps; }
 
     private:
         void updatePID( float dt_s, const Vec3& angles_in_deg, const Vec3& gyro_dps);
-        esp_err_t updateImu();
+        void updateImu();
         Mat3 getRotationMatrix(const Vec3& a);
 
 		Ism330 imu_;

@@ -12,7 +12,7 @@
 static constexpr float k_max_comp_deg = 15.0f;
 static constexpr float k_integral_max = 10.0f;
 
-esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
+void Stabilizer::init(i2c_master_bus_handle_t bus) {
     // Initialize IMU and connect to I2C bus
     esp_log_level_set("imu", ESP_LOG_ERROR);
 
@@ -23,10 +23,7 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
     cfg.fusion         = Ism330::FusionType::Mahony;
     cfg.mahony_kp      = 0.5f; // TODO -- tune btwn 0.1 to 1.0
 
-    esp_err_t err = this->imu_.init(cfg);
-    if (err != ESP_OK) {
-        return err;
-    }
+    ESP_ERROR_CHECK(this->imu_.init(cfg));
 
     vTaskDelay(pdMS_TO_TICKS(1000));
     printf("Initialized IMU\n");
@@ -35,28 +32,18 @@ esp_err_t Stabilizer::init(i2c_master_bus_handle_t bus) {
     vTaskDelay(pdMS_TO_TICKS(500));
     printf("Calibrating IMU, do not move\n");
 
-    err = this->imu_.calibrate(200);
-    if (err != ESP_OK) {
-        return err;
-    }
+    ESP_ERROR_CHECK(this->imu_.calibrate(200));
 
     printf("IMU calibration complete\n");
-
-    return ESP_OK;
 }
 
-esp_err_t Stabilizer::updateImu() {
-    if (this->imu_.getAngles(this->angles_deg) != ESP_OK) {
-        printf("Failed to read IMU\n");
-        return ESP_FAIL;
-    }
+void Stabilizer::updateImu() {
+    ESP_ERROR_CHECK(this->imu_.getAngles(this->angles_deg));
 
     Vec3 g = this->imu_.lastGyro();
 
     // Assumes lastGyro() reports degrees per second.
     this->gyro_dps = Vec3 { g.x, -g.y, 0.0f };
-
-    return ESP_OK;
 }
 
 void Stabilizer::updatePID(float dt_s, const Vec3& angles_in_deg, const Vec3& gyro_dps) {
@@ -103,16 +90,12 @@ void Stabilizer::updatePID(float dt_s, const Vec3& angles_in_deg, const Vec3& gy
     this->rot_mat = getRotationMatrix(comp_deg * k_deg_to_rad);
 }
 
-esp_err_t Stabilizer::update(const float dt_s, SharedData& out_data) {
-    if (updateImu() != ESP_OK) {
-        return ESP_FAIL;
-    }
+void Stabilizer::update(const float dt_s, SharedData& out_data) {
+    updateImu();
 
     updatePID(dt_s, getAngles(), getGyro());
 
     out_data.rot_mat = this->rot_mat;
-
-    return ESP_OK;
 }
 
 Mat3 Stabilizer::getRotationMatrix(const Vec3& a) {

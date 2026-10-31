@@ -1,5 +1,5 @@
 idf_component_register(
-  SRCS "mpc.cpp"
+  SRCS "foothold_planner.cpp"
   INCLUDE_DIRS "include"
   REQUIRES util core
 )

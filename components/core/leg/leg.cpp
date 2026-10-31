@@ -1,7 +1,3 @@
-#include <cmath>
-#include <math.h>
-#include <algorithm>
-
 #include "leg.h"
 #include "leg_controller.h"
 #include "servo.h"

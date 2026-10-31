@@ -1,16 +1,14 @@
-#include "mpc.h"
-#include "mpc_helper.h"
-#include <cstdio>
-// #include "leg.h"
+#include "foothold_planner.h"
+#include "foothold_planner_helper.h"
 
 int count = 0;
 float s = -1;
 
-FootholdMpc::FootholdMpc(const Config& cfg) {
+FootholdPlanner::FootholdPlanner(const Config& cfg) {
     this->cfg = cfg;
 }
 
-FootholdMpc::Result FootholdMpc::planFoothold(const State& state) const {
+FootholdPlanner::Result FootholdPlanner::planFoothold(const State& state) const {
     Result result;
     result.valid = false;
     result.cost = k_float_max;
@@ -68,7 +66,7 @@ FootholdMpc::Result FootholdMpc::planFoothold(const State& state) const {
     return result;
 }
 
-float FootholdMpc::scoreCandidate(const State& state, const Vec3& candidate_foothold_body_bf) const {
+float FootholdPlanner::scoreCandidate(const State& state, const Vec3& candidate_foothold_body_bf) const {
     // J_s
     Vec3 com = calculateCenterOfMass(components.size(), components.data());
     float stability_term = this->cfg.stability_weight * calculateStabilityCost(state, com, candidate_foothold_body_bf, this->cfg.target_stability_margin_mm);
@@ -84,7 +82,7 @@ float FootholdMpc::scoreCandidate(const State& state, const Vec3& candidate_foot
     return stability_term + movement_term + tilt_term;
 }
 
-bool FootholdMpc::isCandidateValid(const State& state, const Vec3& candidate_foothold_body_bf) const {
+bool FootholdPlanner::isCandidateValid(const State& state, const Vec3& candidate_foothold_body_bf) const {
     // valid swing leg index
     if (state.swing_leg < 0 || state.swing_leg >= 4) {
         return false;

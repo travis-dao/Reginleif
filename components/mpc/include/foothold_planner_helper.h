@@ -1,5 +1,5 @@
 #include "types.h"
-#include "mpc.h"
+#include "foothold_planner.h"
 #include <algorithm>
 
 // 2D scalar cross product of vectors a and b.
@@ -129,7 +129,7 @@ inline bool isPointInConvexPolygon(const Vec3& point, const Array<Vec3, 4>& poly
     return true;
 }
 
-inline float calculateStabilityCost(const FootholdMpc::State& state, const Vec3& com, const Vec3& candidate_foothold, float target_margin) {
+inline float calculateStabilityCost(const FootholdPlanner::State& state, const Vec3& com, const Vec3& candidate_foothold, float target_margin) {
     // model the support configuration after the swinging leg touches down = 3 feet in stance + candidate touchdown
     Array<Vec3, 4> contacts;
     int index = 0;

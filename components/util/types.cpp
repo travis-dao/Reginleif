@@ -1,8 +1,3 @@
-#include <cmath>
-#include <math.h>
-#include <algorithm>
-#include <cstdio>
-
 #include "types.h"
 
 #pragma region Vec3

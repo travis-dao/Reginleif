@@ -3,7 +3,7 @@
 
 #include "leg.h"
 #include "pca9685.h"
-#include "mpc.h"
+#include "foothold_planner.h"
 
 namespace Movement {
     constexpr float k_step_length_mm = 150.0f;
@@ -76,7 +76,7 @@ class LegController {
     private:
         Leg* legs_[4];
 		Pca9685 servo_driver_;
-        FootholdMpc mpc_;
+        FootholdPlanner fp_;
 
         Array<Theta3, 4> target_angles;
         float target_angles_buffer[12];

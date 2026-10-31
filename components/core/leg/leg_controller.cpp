@@ -1,9 +1,6 @@
 #include "leg_controller.h"
-#include "esp_err.h"
-#include "mpc.h"
 #include "servo.h"
 #include "types.h"
-#include <algorithm>
 
 const float k_num_servos = 12;
 
@@ -17,7 +14,7 @@ Vec3 bodyToLegFrame(int leg, const Vec3& foot_pos_bf) {
 }
 
 LegController::LegController()
-    : mpc_()
+    : fp_()
 {
     for (int i = 0; i < 4; i++) {
         legs_[i] = nullptr;
@@ -70,7 +67,7 @@ void LegController::update(float dt_s) {
         Vec3 nominal_landing_pos_bf = legToBodyFrame(next, this->legs_[next]->getNominalLandingPos());
 
         // run foot plan MPC
-        const auto result = this->mpc_.planFoothold({
+        const auto result = this->fp_.planFoothold({
             .current_foot_positions_bf = footPositionsBody(),
             .swing_leg = next,
             .nominal_foothold_bf = nominal_landing_pos_bf

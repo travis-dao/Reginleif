@@ -1,13 +1,5 @@
-#include <algorithm>
-#include <math.h>
-#include <new>
-
-#include "esp_err.h"
-#include "esp_log.h"
-#include "freertos/projdefs.h"
 #include "rtos_utils.h"
 #include "types.h"
-
 #include "base.h"
 
 float SPEED_LERP_RATE = 4.0f;

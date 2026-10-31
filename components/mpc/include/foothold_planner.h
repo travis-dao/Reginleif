@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <array>
@@ -37,7 +36,7 @@ constexpr Array<Component, 5> components = {{
  * dynamics model and multi-step optimization must be added for this
  * to function as a full model predictive controller (MPC)
  */
-class FootholdMpc {
+class FootholdPlanner {
     public:
         // Configuration parameters for foothold optimization
         struct Config {
@@ -108,8 +107,8 @@ class FootholdMpc {
             bool valid = false;
         };
         
-        FootholdMpc() = default;
-        FootholdMpc(const Config& cfg);
+        FootholdPlanner() = default;
+        FootholdPlanner(const Config& cfg);
 
         // Select a landing position for the current swing leg
         Result planFoothold(const State& state) const;

@@ -1,4 +1,5 @@
 #include "leg_controller.h"
+#include "esp_err.h"
 #include "mpc.h"
 #include "servo.h"
 #include "types.h"
@@ -26,17 +27,12 @@ LegController::LegController()
     this->swing_leg = -1;
 }
 
-esp_err_t LegController::init(i2c_master_bus_handle_t bus) {
+void LegController::init(i2c_master_bus_handle_t bus) {
     // Initialize servo driver and connect to master I2C bus
     Pca9685::Config cfg{};
     cfg.bus = bus;
     cfg.pwm_freq_hz = ServoConfig::SERVO_FREQ;
-    esp_err_t e = this->servo_driver_.init(cfg);
-
-    if (e != ESP_OK) {
-        printf("Failed to initialize PCA9685: %s\n", esp_err_to_name(e));
-        return e;
-    }
+    ESP_ERROR_CHECK(this->servo_driver_.init(cfg));
 
     printf("Initialized Servo Driver\n");
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -52,8 +48,6 @@ esp_err_t LegController::init(i2c_master_bus_handle_t bus) {
 
     printf("Initialized LegController\n");
     vTaskDelay(pdMS_TO_TICKS(500));
-
-    return ESP_OK;
 }
 
 void LegController::update(float dt_s) {

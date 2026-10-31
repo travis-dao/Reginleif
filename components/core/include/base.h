@@ -12,7 +12,7 @@ class Base {
 		};
 
 		Base();
-		esp_err_t init(i2c_master_bus_handle_t bus_);
+		void init(i2c_master_bus_handle_t bus_);
 		void update(const float dt_s, SharedData& shared_data);
 		
 		float getSpeed() { return this->current_speed_mm_s; }

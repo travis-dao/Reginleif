@@ -65,7 +65,7 @@ class LegController {
         LegController();
 
         void update(const float dt_s);
-        esp_err_t init(i2c_master_bus_handle_t bus);
+        void init(i2c_master_bus_handle_t bus);
         
         bool isGrounded() { return this->grounded; }
 		int getSwingLeg() { return this->swing_leg; }

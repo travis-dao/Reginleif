@@ -74,7 +74,7 @@ inline int calculateConvexHull(Array<Vec3, 4> points, Array<Vec3, 4>& hull) {
 
     // construct lower hull
     for (const auto& p : points) {
-        while (k >= 2 && orientation2D(temp[k - 2], temp[k - 1], p) <= k_epsilon) {
+        while (k >= 2 && orientation2D(temp[k - 2], temp[k - 1], p) <= EPSILON) {
             --k;
         }
         temp[k++] = p;
@@ -86,7 +86,7 @@ inline int calculateConvexHull(Array<Vec3, 4> points, Array<Vec3, 4>& hull) {
     for (int i = 2; i >= 0; --i) {
         const Vec3& p = points[i];
 
-        while (k >= upper_start && orientation2D(temp[k - 2], temp[k - 1], p) <= k_epsilon) {
+        while (k >= upper_start && orientation2D(temp[k - 2], temp[k - 1], p) <= EPSILON) {
             --k;
         }
 
@@ -120,8 +120,8 @@ inline bool isPointInConvexPolygon(const Vec3& point, const Array<Vec3, 4>& poly
 
         float cross = orientation2D(a, b, point);
 
-        if (cross > k_epsilon) has_positive = true;
-        if (cross < -k_epsilon) has_negative = true;
+        if (cross > EPSILON) has_positive = true;
+        if (cross < -EPSILON) has_negative = true;
 
         if (has_positive && has_negative) return false;
     }
@@ -138,7 +138,7 @@ inline float calculateStabilityCost(const FootholdPlanner::State& state, const V
         if (i == state.swing_leg) continue;
 
         if (index >= 3) {
-            return k_float_max;
+            return FLOAT_MAX;
         }
 
         contacts[index] = state.current_foot_positions_bf[i];
@@ -147,7 +147,7 @@ inline float calculateStabilityCost(const FootholdPlanner::State& state, const V
     }
 
     if (index != 3) {
-        return k_float_max;
+        return FLOAT_MAX;
     }
 
     // last contact = candidate
@@ -164,11 +164,11 @@ inline float calculateStabilityCost(const FootholdPlanner::State& state, const V
 
     // bad support polygon = 1 foot inside triangle of other 3
     if (hull_size < 3) {
-        return k_float_max;
+        return FLOAT_MAX;
     }
 
     // find dis to nearest edge
-    float min_edge_distance = k_float_max;
+    float min_edge_distance = FLOAT_MAX;
     for (int i = 0; i < hull_size; ++i) {
         const Vec3& a = hull[i];
         const Vec3& b = hull[(i + 1) % hull_size]; // wrap last vertex to first

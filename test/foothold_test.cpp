@@ -8,7 +8,7 @@ Array<Vec3, 4> current_foot_positions_bf = Offset::neutral_foot_pos_bf;
 
 Vec3 nominal_target_bf = Offset::neutral_foot_pos_bf[0];
 int airborne_leg = 0;
-float length = Movement::k_step_length_mm;
+float length = Movement::STEP_LENGTH_MM;
 
 int main() {
     nominal_target_bf.x += length / 2.0f;

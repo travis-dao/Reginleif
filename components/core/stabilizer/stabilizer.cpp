@@ -2,8 +2,8 @@
 #include "stabilizer.h"
 
 
-static constexpr float k_max_comp_deg = 15.0f;
-static constexpr float k_integral_max = 10.0f;
+static constexpr float MAX_COMP_DEG = 15.0f;
+static constexpr float INTEGRAL_MAX = 10.0f;
 
 Stabilizer::Stabilizer(const Config& config)
     : target_angles_deg{0.0f, 0.0f, 0.0f},
@@ -65,16 +65,16 @@ void Stabilizer::updatePID(float dt_s, const Vec3& angles_in_deg, const Vec3& gy
 
         const float proposed_integral = std::clamp(
             integral_axis + error_axis * dt_s,
-            -k_integral_max,
-            k_integral_max
+            -INTEGRAL_MAX,
+            INTEGRAL_MAX
         );
 
         const float proposed_output =
             kp * error_axis + ki * proposed_integral + d_axis;
 
         const bool drives_further_into_saturation =
-            (proposed_output > k_max_comp_deg && ki * error_axis > 0.0f) ||
-            (proposed_output < -k_max_comp_deg && ki * error_axis < 0.0f);
+            (proposed_output > MAX_COMP_DEG && ki * error_axis > 0.0f) ||
+            (proposed_output < -MAX_COMP_DEG && ki * error_axis < 0.0f);
 
         if (!drives_further_into_saturation) {
             integral_axis = proposed_integral;
@@ -87,11 +87,11 @@ void Stabilizer::updatePID(float dt_s, const Vec3& angles_in_deg, const Vec3& gy
 
     Vec3 comp_deg = error * this->K_p + this->integral_sum * this->K_i + d_term;
 
-    comp_deg.x = std::clamp(comp_deg.x, -k_max_comp_deg, k_max_comp_deg);
-    comp_deg.y = std::clamp(comp_deg.y, -k_max_comp_deg, k_max_comp_deg);
+    comp_deg.x = std::clamp(comp_deg.x, -MAX_COMP_DEG, MAX_COMP_DEG);
+    comp_deg.y = std::clamp(comp_deg.y, -MAX_COMP_DEG, MAX_COMP_DEG);
     comp_deg.z = 0.0f;
 
-    this->rot_mat = getRotationMatrix(comp_deg * k_deg_to_rad);
+    this->rot_mat = getRotationMatrix(comp_deg * DEG_TO_RAD);
 }
 
 void Stabilizer::update(const float dt_s, ImuData& out_data) {
@@ -110,11 +110,13 @@ Mat3 Stabilizer::getRotationMatrix(const Vec3& a) {
     const float sy = sinf(a.y);
 
     // R = Rx * Ry (roll, then pitch; no yaw).
-    return Mat3 {{
-        { cy,      0.0f,  sy      },
-        { sx * sy, cx,    -sx * cy },
-        { -cx * sy,sx,    cx * cy }
-    }};
+    return Mat3{
+        .data = {{
+            {{cy,       0.0f,  sy}},
+            {{sx * sy,  cx,   -sx * cy}},
+            {{-cx * sy, sx,    cx * cy}}
+        }}
+    };
 }
 
 
@@ -126,9 +128,9 @@ Mat3 Stabilizer::getRotationMatrix(const Vec3& a) {
 //     esp_err_t err_gyro = this->imu_.readGyro(this->gyro);
 //     if (err_gyro != OK) return err_gyro;
 
-//     out.angles_rad = Vec3 {this->angles.roll, this->angles.pitch, this->angles.yaw} * k_deg_to_rad;
-//     out.rpy_rad  = Vec3 {angles.roll, angles.pitch, angles.yaw} * k_deg_to_rad;
-//     out.gyro_rad_s = gyro * k_deg_to_rad;   // ADAPT: ISM330 reports dps; convert and remove bias
+//     out.angles_rad = Vec3 {this->angles.roll, this->angles.pitch, this->angles.yaw} * DEG_TO_RAD;
+//     out.rpy_rad  = Vec3 {angles.roll, angles.pitch, angles.yaw} * DEG_TO_RAD;
+//     out.gyro_rad_s = gyro * DEG_TO_RAD;   // ADAPT: ISM330 reports dps; convert and remove bias
 //     out.valid = true;
 
 //     return ESP_OK;

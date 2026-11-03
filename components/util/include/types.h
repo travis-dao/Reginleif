@@ -6,11 +6,11 @@
 #include <array>
 #include <Eigen/Dense>
 
-constexpr float k_rad_to_deg = 57.2957795131f;
-constexpr float k_deg_to_rad = 0.01745329252f;
-constexpr float k_pi = static_cast<float>(M_PI);
-constexpr float k_epsilon = 1e-6f; // float error
-constexpr float k_float_max = std::numeric_limits<float>::max();
+constexpr float RAD_TO_DEG = 57.2957795131f;
+constexpr float DEG_TO_RAD = 0.01745329252f;
+constexpr float PI = static_cast<float>(M_PI);
+constexpr float EPSILON = 1e-6f; // float error
+constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
 
 struct Theta3 {
   	float coxa, femur, tibia;

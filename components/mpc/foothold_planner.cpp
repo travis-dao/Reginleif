@@ -11,7 +11,7 @@ FootholdPlanner::FootholdPlanner(const Config& cfg) {
 FootholdPlanner::Result FootholdPlanner::planFoothold(const State& state) const {
     Result result;
     result.valid = false;
-    result.cost = k_float_max;
+    result.cost = FLOAT_MAX;
 
     if (state.swing_leg < 0 || state.swing_leg >= 4) {
         return result;

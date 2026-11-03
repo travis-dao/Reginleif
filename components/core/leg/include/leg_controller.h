@@ -7,9 +7,9 @@
 #include "rtos_utils.h"
 
 namespace Movement {
-    constexpr float k_step_length_mm = 150.0f;
-    constexpr float k_step_height_mm = 100.0f;
-    constexpr float k_swing_duration_s = 0.250f;
+    constexpr float STEP_LENGTH_MM = 150.0f;
+    constexpr float STEP_HEIGHT_MM = 100.0f;
+    constexpr float SWING_DURATION_S = 0.250f;
     
     constexpr int next_leg_gait[5] = {
         /* -1 -> */ 0,

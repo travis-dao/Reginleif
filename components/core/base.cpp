@@ -28,8 +28,8 @@ void Base::updateSpeed(const float dt_s) {
 	case WALK:
 	case RUN:
 		target_speed_mm_s =
-			(Movement::k_step_length_mm * 2) /
-			(Movement::k_swing_duration_s * 3); // calc stance speed
+			(Movement::STEP_LENGTH_MM * 2) /
+			(Movement::SWING_DURATION_S * 3); // calc stance speed
 		break;
 	default:
 		target_speed_mm_s = 0.0f;
@@ -49,7 +49,7 @@ void Base::updateSpeed(const float dt_s) {
 }
 
 void Base::update(const float dt_s, const ImuData& imu_data) {
-	this->target_orientation_rad = imu_data.angles_rad * k_rad_to_deg;
+	this->target_orientation_rad = imu_data.angles_rad * RAD_TO_DEG;
 
 	updateSpeed(dt_s);
 

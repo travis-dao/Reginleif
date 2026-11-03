@@ -1,7 +1,7 @@
 #include "leg_controller.h"
 #include "servo.h"
 
-const float k_num_servos = 12;
+const float NUM_SERVOS = 12;
 
 // Leg-frame foot position -> true body-frame position
 Vec3 legToBodyFrame(int leg, const Vec3& foot_pos_lf) {
@@ -88,7 +88,7 @@ void LegController::update(float dt_s, const ImuData& imu_data) {
         this->target_angles_buffer[i * 3 + 1] = this->target_angles[i].femur;
         this->target_angles_buffer[i * 3 + 2] = this->target_angles[i].tibia;
     }
-    servoSetAngles(this->servo_driver_, this->target_angles_buffer, k_num_servos);
+    servoSetAngles(this->servo_driver_, this->target_angles_buffer, NUM_SERVOS);
 }
 
 // current foot pos, body frame

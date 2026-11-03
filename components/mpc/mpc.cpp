@@ -1,9 +1,9 @@
 #include "mpc.h"
-#include "srb_model.h"
-#include <cmath>
 #include "esp_timer.h"
 
-MPC::MPC(const Config& cfg) : cfg_(cfg) {
+MPC::MPC(const Config& cfg) : 
+    cfg_(cfg)
+{
     this->N = cfg_.horizon;
 
     models_.resize(N);
@@ -122,7 +122,43 @@ VecX MPC::shift(const VecX& U) const {
     return out;
 }
 
-bool MPC::solveQP(VecX& U_out) {
+extern "C" {
+    #include "cpg_workspace.h"
+    #include "cpg_solve.h"
+}
+#include <cstring>
+
+bool MPC::solveQP(const MPCProblem& problem, VecX& U_out) {
+    // err = A_qp * x0 - Y (same as in builtCost)
+    VecX Y(NX * N);
+    for (int i = 0; i < N; i++) {
+        Y.segment(NX * i, NX) = problem.x_ref[i];
+    }
+    const VecX err = A_qp_ * problem.x0.toVector() - Y;
+
+    // parameters
+    for (int k = 0; k < B_qp_.size(); k++) {
+        mpc_cpg_update_B_qp(k, B_qp_.data()[k]);
+    }
+    for (int k = 0; k < err.size(); k++) {
+        mpc_cpg_update_err(k, err(k));
+    }
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < NUM_LEGS; j++) {
+            const int r = CONSTRAINTS_PER_FOOT * (NUM_LEGS * i + j) + PYRAMID_ROWS;
+            const int k = NUM_LEGS * i + j;
+            mpc_cpg_update_lb_f(k, lb_(r));
+            mpc_cpg_update_ub_f(k, ub_(r));
+        }
+    }
+
+    mpc_cpg_solve();
+
+    if (strcmp(mpc_CPG_Result.info->status, "solved") != 0) return false;
+    for (int k = 0; k < NU * N; k++) {
+        U_out(k) = mpc_CPG_Result.prim->U[k];
+    }
     return true;
 }
 
@@ -137,7 +173,7 @@ MPCResult MPC::solve(const MPCProblem& problem) {
 
     // solve
     MPCResult res;
-    bool ok = solveQP(U_sol_);
+    bool ok = solveQP(problem, U_sol_);
     if (!ok) {
         U_sol_ = shift(U_prev_);
     }

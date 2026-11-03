@@ -3,7 +3,6 @@
 
 #include "leg.h"
 #include "pca9685.h"
-#include "foothold_planner.h"
 #include "rtos_utils.h"
 
 namespace Movement {
@@ -77,7 +76,6 @@ class LegController {
     private:
         Leg* legs_[4];
 		Pca9685 servo_driver_;
-        FootholdPlanner fp_;
 
         Array<Theta3, 4> target_angles;
         float target_angles_buffer[12];

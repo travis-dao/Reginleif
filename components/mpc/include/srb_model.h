@@ -1,13 +1,7 @@
 #pragma once
 
-#include <array>
-#include <cmath>
-
-#include <Eigen/Core>
-#include <Eigen/Geometry>
-#include <unsupported/Eigen/MatrixFunctions>  // for .exp()
-
 #include "types.h"
+#include "eigen.h"
 
 // single rigid body
 // namespace srb {

@@ -2,9 +2,9 @@
 gen_mpc_qp.py  --  generate embedded C QP solver for the condensed MPC.
 
 pip install cvxpy cvxpygen numpy
-source .venv-cvxpy/bin/activate       # venv
-python cvxpy/gen_mpc_qp.py --target components/qp            # generate code
-python cvxpy/gen_mpc_qp.py --test     # sanity-check (no codegen)
+source .venv-cvxpy/bin/activate                             # activate venv
+python cvxpy/gen_mpc_qp.py --target components/qp           # generate code
+python cvxpy/gen_mpc_qp.py --test                           # sanity-check (no codegen)
 """
 import argparse
 from dataclasses import dataclass, field
@@ -13,14 +13,15 @@ import numpy as np
 import cvxpy as cp
 from cvxpygen import cpg
 
-NX = 13
-NU = 12
-NUM_LEGS = 4
-PYRAMID_ROWS = 4
 
 import shutil
 import tempfile
 from pathlib import Path
+
+NX = 13
+NU = 12
+NUM_LEGS = 4
+PYRAMID_ROWS = 4
 
 # folders under <code_dir>/c/ that get copied into the target
 COPY_DIRS = ("src", "include", "solver_code")

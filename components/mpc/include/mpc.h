@@ -1,12 +1,7 @@
 #pragma once
 
 #include "srb_model.h"
-#include "types.h"
-
-// namespace srb {
-
-using MatX = Eigen::MatrixXf;
-using VecX = Eigen::VectorXf;
+#include "eigen.h"
 
 // Per-foot constraint rows: 4 friction-pyramid rows + 1 normal-force row
 constexpr int CONSTRAINTS_PER_FOOT = 5;
@@ -110,6 +105,4 @@ class MPC {
         VecX U_prev_;   // 12N, last successful solution (warm start / fallback)
 
         bool solver_initialized_ = false;   // for the one-time OSQP setup
-    };
-
-// }  // namespace srb
+};

@@ -1,9 +1,9 @@
 #include "mpc.h"
-#include "srb_model.h"
-#include <cmath>
 #include "esp_timer.h"
 
-MPC::MPC(const Config& cfg) : cfg_(cfg) {
+MPC::MPC(const Config& cfg) : 
+    cfg_(cfg)
+{
     this->N = cfg_.horizon;
 
     models_.resize(N);

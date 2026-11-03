@@ -10,7 +10,7 @@ set(COMP ${CMAKE_CURRENT_SOURCE_DIR}/../components)
 find_package(Eigen3 REQUIRED NO_MODULE)
 
 add_library(mpc_host
-    ${COMP}/mpc/mpc.cpp
+    ${COMP}/mpc/foothold_planner.cpp
     ${COMP}/util/types.cpp
     # ${COMP}/core/leg/leg.cpp
 )
@@ -24,5 +24,5 @@ target_include_directories(mpc_host PUBLIC
 
 target_link_libraries(mpc_host PUBLIC Eigen3::Eigen)
 
-add_executable(foothold_test foothold_test.cpp)
-target_link_libraries(foothold_test PRIVATE mpc_host)
+add_executable(test_foothold test_foothold.cpp)
+target_link_libraries(test_foothold PRIVATE mpc_host)

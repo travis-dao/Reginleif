@@ -12,9 +12,7 @@ Vec3 bodyToLegFrame(int leg, const Vec3& foot_pos_bf) {
 	return foot_pos_bf - Offset::leg_base_pos_bf[leg];
 }
 
-LegController::LegController()
-    : fp_()
-{
+LegController::LegController() {
     for (int i = 0; i < 4; i++) {
         legs_[i] = nullptr;
     }
@@ -65,18 +63,8 @@ void LegController::update(float dt_s, const ImuData& imu_data) {
 
         Vec3 nominal_landing_pos_bf = legToBodyFrame(next, this->legs_[next]->getNominalLandingPos());
 
-        // run foot plan MPC
-        const auto result = this->fp_.planFoothold({
-            .current_foot_positions_bf = footPositionsBody(),
-            .swing_leg = next,
-            .nominal_foothold_bf = nominal_landing_pos_bf
-        });
-
-        // valid result?
-        const Vec3 landing_pos_bf = result.valid ? result.foothold_bf : nominal_landing_pos_bf;
-
         // start swing sequence of target leg
-        this->legs_[next]->startSwing(bodyToLegFrame(next, landing_pos_bf));
+        this->legs_[next]->startSwing(bodyToLegFrame(next, nominal_landing_pos_bf));
     }
 
     // leg movement calculations

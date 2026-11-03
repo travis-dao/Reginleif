@@ -75,7 +75,7 @@ class MPC {
         void buildConstraints(const MPCProblem& problem);
 
         // 5. Hand H, q, C, lb, ub to the QP backend (OSQP).
-        bool solveQP(VecX& U_out);
+        bool solveQP(const MPCProblem& problem, VecX& U_out);
 
         // Shift a stacked solution forward one step: [u0 u1 ... uN-1] -> [u1 ... uN-1 uN-1]
         VecX shift(const VecX& U) const;

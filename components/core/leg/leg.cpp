@@ -2,6 +2,7 @@
 #include "leg_controller.h"
 #include "servo.h"
 #include "types.h"
+#include "ik.h"
 
 constexpr float FEMUR_LENGTH_MM = 122.64f;
 constexpr float TIBIA_LENGTH_MM = 34.66f + 147.03f;
@@ -71,58 +72,21 @@ bool Leg::outsideServoLimits(const Theta3& angles_deg, const int id) {
 	return true;
 }
 
-bool Leg::IK(Vec3 target_foot_pos_lf, Theta3& out_angles_deg) {
-	Theta3 target_angles_deg;
-
-	// dis to target pos on x-y plane
-	float d = sqrt(target_foot_pos_lf.x * target_foot_pos_lf.x + target_foot_pos_lf.y * target_foot_pos_lf.y);
-
-	// adjust dis for offset to where coxa servo connects femur servo
-	float r = d - BODY_COXA_X_MM;
-
-	// dis to target pos on x-z plane, basically dis from femur servo to tip of tibia
-	target_foot_pos_lf.z += BODY_COXA_Z_MM;
-	float c = sqrt(target_foot_pos_lf.z * target_foot_pos_lf.z + r * r);
-
-	float c_squared = c * c;
-	float a_squared = FEMUR_LENGTH_MM * FEMUR_LENGTH_MM;
-	float b_squared = TIBIA_LENGTH_MM * TIBIA_LENGTH_MM;
-
-	// reachability check
-	if (c > c_max + EPSILON || c < c_min - EPSILON || c < EPSILON) {
-		return false;  // unreachable, leave out_angles_deg untouched
-	}
-
-	// calculate femur servo
-	float cos2 = std::clamp(
-		(a_squared + c_squared - b_squared) / (2 * FEMUR_LENGTH_MM * c), 
-		-1.0f, 
-		1.0f
-	);
-
-	// calculate tibia servo
-	float cos3 = std::clamp(
-		(a_squared + b_squared - c_squared) / (2 * FEMUR_LENGTH_MM * TIBIA_LENGTH_MM), 
-		-1.0f, 
-		1.0f
-	);
-
-	// update output
-	target_angles_deg.coxa = atan2f(target_foot_pos_lf.y, target_foot_pos_lf.x) * RAD_TO_DEG; // coxa
-	target_angles_deg.femur = atan2f(r, -target_foot_pos_lf.z) * RAD_TO_DEG + acosf(cos2) * RAD_TO_DEG; // femur
-	target_angles_deg.tibia = acosf(cos3) * RAD_TO_DEG; // tibia
-
-	out_angles_deg = target_angles_deg;
-	return true;
-}
-
 void Leg::moveLeg() {
 	// flip y pos
 	Vec3 adjusted_target_pos_lf = this->pos_state.foot_target_pos_lf;
 	adjusted_target_pos_lf.y *= isRightLeg(id) ? -1.0f : 1.0f;
 
 	Theta3 target_angles_deg;
-	bool reachable = IK(adjusted_target_pos_lf, target_angles_deg);
+
+	bool reachable = IK({
+		.body_coxa_x_mm = BODY_COXA_X_MM,
+		.body_coxa_z_mm = BODY_COXA_Z_MM,
+		.femur_length_mm = FEMUR_LENGTH_MM,
+		.tibia_length_mm = TIBIA_LENGTH_MM,
+		.c_min = c_min,
+		.c_max = c_max
+	}, adjusted_target_pos_lf, target_angles_deg);
 
 	if (reachable) {
 		// flip angles for reverse mounted servos (leg side)

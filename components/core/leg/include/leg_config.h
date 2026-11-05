@@ -3,10 +3,9 @@
 
 #include "types.h"
 
-constexpr float FEMUR_LENGTH_MM = 122.64f;
-constexpr float TIBIA_LENGTH_MM = 34.66f + 147.03f;
-constexpr float BODY_COXA_X_MM = 28.58f;
-constexpr float BODY_COXA_Z_MM = 0.0f;
+constexpr float FEMUR_LENGTH_MM = 123.0f;
+constexpr float TIBIA_LENGTH_MM = 160.0f;
+constexpr float BODY_COXA_X_MM = 15.0f;
 
 const float c_max = FEMUR_LENGTH_MM + TIBIA_LENGTH_MM;
 const float c_min = fabsf(FEMUR_LENGTH_MM - TIBIA_LENGTH_MM);
@@ -28,10 +27,10 @@ namespace Movement {
 namespace Offset {
     // in foot frame
     // (0, 0, 0) = hip of foot
-    constexpr Vec3 foot_neutral_offset_mag = { 150.0f, 150.0f, 0.0f };
+    constexpr Vec3 foot_neutral_offset_mag = { 140.0f, 140.0f, 0.0f };
     // from body frame
     // (0, 0, 0) = center of body
-    constexpr Vec3 leg_base_offset_mag = { 33.72f, 43.13f, -20.0f };
+    constexpr Vec3 leg_base_offset_mag = { 34.0f, 43.5f, 0.0f };
 
     // Per-leg sign for each axis (FL, FR, BR, BL)
     constexpr Array<Vec3, 4> quadrant_sign = {{

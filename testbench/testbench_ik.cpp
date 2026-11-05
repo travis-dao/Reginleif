@@ -1,3 +1,7 @@
+// make -C testbench clean
+// make -C testbench build
+// make -C testbench run
+
 #include "ik.h"
 #include "leg_config.h"
 
@@ -13,7 +17,6 @@ void initLegs() {
         
         bool ok = IK({
             .body_coxa_x_mm = BODY_COXA_X_MM,
-            .body_coxa_z_mm = BODY_COXA_Z_MM,
             .femur_length_mm = FEMUR_LENGTH_MM,
             .tibia_length_mm = TIBIA_LENGTH_MM,
             .c_min = c_min,

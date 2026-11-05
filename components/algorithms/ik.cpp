@@ -1,5 +1,5 @@
 #include "ik.h"
-#include "servo.h"
+#include <algorithm>
 
 bool IK(const IKConfig& cfg, Vec3 target_foot_pos_lf, Theta3& out_angles_deg) {
 	Theta3 target_angles_deg;
@@ -11,21 +11,20 @@ bool IK(const IKConfig& cfg, Vec3 target_foot_pos_lf, Theta3& out_angles_deg) {
 	float r = d - cfg.body_coxa_x_mm;
 
 	// dis to target pos on x-z plane, basically dis from femur servo to tip of tibia
-	target_foot_pos_lf.z += cfg.body_coxa_z_mm;
-	float c = sqrt(target_foot_pos_lf.z * target_foot_pos_lf.z + r * r);
+	float femur_to_tip = sqrt(target_foot_pos_lf.z * target_foot_pos_lf.z + r * r);
 
-	float c_squared = c * c;
+	float c_squared = femur_to_tip * femur_to_tip;
 	float a_squared = cfg.femur_length_mm * cfg.femur_length_mm;
 	float b_squared = cfg.tibia_length_mm * cfg.tibia_length_mm;
 
 	// reachability check
-	if (c > cfg.c_max + EPSILON || c < cfg.c_min - EPSILON || c < EPSILON) {
+	if (femur_to_tip > cfg.c_max + EPSILON || femur_to_tip < cfg.c_min - EPSILON || femur_to_tip < EPSILON) {
 		return false;  // unreachable, leave out_angles_deg untouched
 	}
 
 	// calculate femur servo
 	float cos2 = std::clamp(
-		(a_squared + c_squared - b_squared) / (2 * cfg.femur_length_mm * c), 
+		(a_squared + c_squared - b_squared) / (2 * cfg.femur_length_mm * femur_to_tip), 
 		-1.0f, 
 		1.0f
 	);
@@ -52,24 +51,4 @@ Theta3 invertAngles(const Theta3& angles_deg) {
 		180.0f - angles_deg.femur,
 		180.0f - angles_deg.tibia
 	};
-}
-
-Theta3 clampToLimits(const Theta3& angles_deg, const int leg_idx) {
-	const LegServoLimits& lim = ServoConfig::limits[leg_idx];
-
-	return Theta3 {
-		lim.coxa.clamp(angles_deg.coxa),
-		lim.femur.clamp(angles_deg.femur),
-		lim.tibia.clamp(angles_deg.tibia)
-	};
-}
-
-bool outsideServoLimits(const Theta3& angles_deg, const int leg_idx) {
-	const LegServoLimits& lim = ServoConfig::limits[leg_idx];
-
-	if (angles_deg.coxa > lim.coxa.max_deg || angles_deg.coxa < lim.coxa.min_deg) return false;
-	if (angles_deg.femur > lim.femur.max_deg || angles_deg.femur < lim.femur.min_deg) return false;
-	if (angles_deg.tibia > lim.tibia.max_deg || angles_deg.tibia < lim.tibia.min_deg) return false;
-	
-	return true;
 }

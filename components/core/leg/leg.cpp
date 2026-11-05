@@ -4,6 +4,27 @@
 #include "types.h"
 #include "ik.h"
 
+
+Theta3 clampToLimits(const Theta3& angles_deg, const int leg_idx) {
+	const LegServoLimits& lim = ServoConfig::limits[leg_idx];
+
+	return Theta3 {
+		lim.coxa.clamp(angles_deg.coxa),
+		lim.femur.clamp(angles_deg.femur),
+		lim.tibia.clamp(angles_deg.tibia)
+	};
+}
+
+bool outsideServoLimits(const Theta3& angles_deg, const int leg_idx) {
+	const LegServoLimits& lim = ServoConfig::limits[leg_idx];
+
+	if (angles_deg.coxa > lim.coxa.max_deg || angles_deg.coxa < lim.coxa.min_deg) return false;
+	if (angles_deg.femur > lim.femur.max_deg || angles_deg.femur < lim.femur.min_deg) return false;
+	if (angles_deg.tibia > lim.tibia.max_deg || angles_deg.tibia < lim.tibia.min_deg) return false;
+	
+	return true;
+}
+
 static bool isRightLeg(const int id) {
 	return id == 1 || id == 2;
 }
@@ -45,7 +66,6 @@ void Leg::moveLeg() {
 
 	bool reachable = IK({
 		.body_coxa_x_mm = BODY_COXA_X_MM,
-		.body_coxa_z_mm = BODY_COXA_Z_MM,
 		.femur_length_mm = FEMUR_LENGTH_MM,
 		.tibia_length_mm = TIBIA_LENGTH_MM,
 		.c_min = c_min,

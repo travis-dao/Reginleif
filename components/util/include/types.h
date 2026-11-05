@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <math.h>
 #include <array>
-#include <Eigen/Dense>
 
 constexpr float RAD_TO_DEG = 57.2957795131f;
 constexpr float DEG_TO_RAD = 0.01745329252f;

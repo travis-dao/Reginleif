@@ -1,16 +1,10 @@
-
 # Host-side test Makefile
 # Usage:
-#   make -C test
-#   make -C test run TARGET=test_foothold
-#   make -C test run TARGET=test_osqp_solver
-#   make -C test clean
-#   make -C test rebuild TARGET=test_osqp_solver
+#   make -C testbench build
 
-TEST_DIR  := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-BUILD_DIR := $(abspath $(TEST_DIR)/../build_testbench)
+TEST_DIR  := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+BUILD_DIR := $(TEST_DIR)/build
 
-# Default executable; override from the command line.
 TARGET ?= testbench_ik
 
 .PHONY: all build run clean rebuild list
@@ -18,21 +12,22 @@ TARGET ?= testbench_ik
 all: run
 
 build:
-	cmake -S $(TEST_DIR) -B $(BUILD_DIR)
-	cmake --build $(BUILD_DIR)
+	cmake -S "$(TEST_DIR)" -B "$(BUILD_DIR)" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	cmake --build "$(BUILD_DIR)"
+	@test -f "$(BUILD_DIR)/compile_commands.json"
+	@echo "Compilation database: $(BUILD_DIR)/compile_commands.json"
 
 run: build
-	$(BUILD_DIR)/$(TARGET)
+	"$(BUILD_DIR)/$(TARGET)"
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf "$(BUILD_DIR)"
 
 rebuild: clean run
 
-# List available executables in the build directory.
 list: build
-	@find $(BUILD_DIR) -type f -perm -111 \
-		! -path '*/CMakeFiles/*' \
-		! -name '*.sh' \
-		! -name '*.cmake' \
+	@find "$(BUILD_DIR)" -type f -perm -111 
+		! -path '*/CMakeFiles/*' 
+		! -name '*.sh' 
+		! -name '*.cmake' 
 		-print

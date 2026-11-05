@@ -1,5 +1,5 @@
-#ifndef leg_controller_h
-#define leg_controller_h
+#ifndef LEG_CONTROLLER_h
+#define LEG_CONTROLLER_h
 
 #include "leg.h"
 #include "pca9685.h"

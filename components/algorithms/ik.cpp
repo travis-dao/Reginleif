@@ -31,7 +31,7 @@ bool IK(const IKConfig& cfg, Vec3 target_foot_pos_lf, Theta3& out_angles_deg) {
 
 	// calculate tibia servo
 	float cos3 = std::clamp(
-		(a_squared + b_squared - c_squared) / (2 * cfg.femur_length_mm * cfg.femur_length_mm), 
+		(a_squared + b_squared - c_squared) / (2 * cfg.femur_length_mm * cfg.tibia_length_mm), 
 		-1.0f, 
 		1.0f
 	);

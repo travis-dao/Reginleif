@@ -27,7 +27,7 @@ namespace Movement {
 namespace Offset {
     // in foot frame
     // (0, 0, 0) = hip of foot
-    constexpr Vec3 foot_neutral_offset_mag = { 140.0f, 140.0f, 0.0f };
+    constexpr Vec3 foot_neutral_offset_mag = { 120.0f, 120.0f, -40.0f };
     // from body frame
     // (0, 0, 0) = center of body
     constexpr Vec3 leg_base_offset_mag = { 34.0f, 43.5f, 0.0f };

@@ -19,7 +19,7 @@
 *.log
 
 # Build artifacts and directories
-build_test/
+build_testbench/
 **/build/
 build/
 *.o

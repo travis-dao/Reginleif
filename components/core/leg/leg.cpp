@@ -4,14 +4,6 @@
 #include "types.h"
 #include "ik.h"
 
-constexpr float FEMUR_LENGTH_MM = 122.64f;
-constexpr float TIBIA_LENGTH_MM = 34.66f + 147.03f;
-constexpr float BODY_COXA_X_MM = 28.58f;
-constexpr float BODY_COXA_Z_MM = 0.0f;
-
-const float c_max = FEMUR_LENGTH_MM + TIBIA_LENGTH_MM;
-const float c_min = fabsf(FEMUR_LENGTH_MM - TIBIA_LENGTH_MM);
-
 static bool isRightLeg(const int id) {
 	return id == 1 || id == 2;
 }
@@ -44,34 +36,6 @@ Leg::Leg(const Config& cfg):
 	moveLeg();
 }
 
-Theta3 Leg::invertAngles(const Theta3& angles_deg) {
-	return Theta3 {
-		180.0f - angles_deg.coxa,
-		180.0f - angles_deg.femur,
-		180.0f - angles_deg.tibia
-	};
-}
-
-Theta3 Leg::clampToLimits(const Theta3& angles_deg) {
-	const LegServoLimits& lim = ServoConfig::limits[this->id];
-
-	return Theta3 {
-		lim.coxa.clamp(angles_deg.coxa),
-		lim.femur.clamp(angles_deg.femur),
-		lim.tibia.clamp(angles_deg.tibia)
-	};
-}
-
-bool Leg::outsideServoLimits(const Theta3& angles_deg, const int id) {
-	const LegServoLimits& lim = ServoConfig::limits[id];
-
-	if (angles_deg.coxa > lim.coxa.max_deg || angles_deg.coxa < lim.coxa.min_deg) return false;
-	if (angles_deg.femur > lim.femur.max_deg || angles_deg.femur < lim.femur.min_deg) return false;
-	if (angles_deg.tibia > lim.tibia.max_deg || angles_deg.tibia < lim.tibia.min_deg) return false;
-	
-	return true;
-}
-
 void Leg::moveLeg() {
 	// flip y pos
 	Vec3 adjusted_target_pos_lf = this->pos_state.foot_target_pos_lf;
@@ -95,7 +59,7 @@ void Leg::moveLeg() {
 		}
 
 		// clamp servos to calibrated limits
-		target_angles_deg = clampToLimits(target_angles_deg);
+		target_angles_deg = clampToLimits(target_angles_deg, this->id);
 		
 		// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->id, target_angles.coxa, target_angles.femur, target_angles.tibia);
 

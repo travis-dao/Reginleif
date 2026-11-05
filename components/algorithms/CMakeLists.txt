@@ -1,5 +1,5 @@
 idf_component_register(
-  SRCS 
+  SRCS "ik.cpp"
   INCLUDE_DIRS "include"
-  REQUIRES util
+  REQUIRES util motor
 )

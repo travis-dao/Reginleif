@@ -9,20 +9,20 @@ set(COMP ${CMAKE_CURRENT_SOURCE_DIR}/../components)
 # Eigen (header-only, needed because types.h includes it)
 find_package(Eigen3 REQUIRED NO_MODULE)
 
-add_library(mpc_host
-    ${COMP}/mpc/foothold_planner.cpp
+add_library(testbench_host
     ${COMP}/util/types.cpp
-    # ${COMP}/core/leg/leg.cpp
+    ${COMP}/algorithms/ik.cpp
 )
 
-target_include_directories(mpc_host PUBLIC
+target_include_directories(testbench_host PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/stubs
-    ${COMP}/mpc/include
     ${COMP}/util/include
+    ${COMP}/algorithms/include
+    ${COMP}/motor/include
     ${COMP}/core/leg/include
 )
 
-target_link_libraries(mpc_host PUBLIC Eigen3::Eigen)
+target_link_libraries(testbench_host PUBLIC Eigen3::Eigen)
 
-add_executable(test_foothold test_foothold.cpp)
-target_link_libraries(test_foothold PRIVATE mpc_host)
+add_executable(testbench_ik testbench_ik.cpp)
+target_link_libraries(testbench_ik PRIVATE testbench_host)

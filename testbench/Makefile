@@ -8,10 +8,10 @@
 #   make -C test rebuild TARGET=test_osqp_solver
 
 TEST_DIR  := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-BUILD_DIR := $(abspath $(TEST_DIR)/../build_test)
+BUILD_DIR := $(abspath $(TEST_DIR)/../build_testbench)
 
 # Default executable; override from the command line.
-TARGET ?= test_foothold
+TARGET ?= testbench_ik
 
 .PHONY: all build run clean rebuild list
 

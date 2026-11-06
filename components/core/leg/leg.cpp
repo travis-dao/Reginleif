@@ -33,9 +33,7 @@ static bool isFrontLeg(const int id) {
 }
 
 
-Leg::Leg(const Config& cfg):
-	pca(cfg.pca)
-{
+Leg::Leg(const Config& cfg) {
 	Vec3 neutral_foot_pos_lf = Offset::neutral_foot_pos_lf[cfg.id];
 
 	this->id = cfg.id;

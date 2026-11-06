@@ -1,7 +1,6 @@
 #ifndef LEG_h
 #define LEG_h
 
-#include "pca9685.h"
 #include "rtos_utils.h"
 #include "types.h"
 
@@ -24,7 +23,6 @@ class Leg {
 	public:
 		struct Config {
 			int id;
-			Pca9685& pca;
 		};
 
 		Leg(const Config& cfg);
@@ -48,8 +46,6 @@ class Leg {
 		int id;
 		LegState leg_state;
 		FootPositionState pos_state;
-
-		Pca9685& pca;
 
 		void moveLeg();
 

@@ -34,10 +34,7 @@ void LegController::init(i2c_master_bus_handle_t bus) {
 
     // Instantiate legs
     for (int i = 0; i < 4; i++) {
-        this->legs_[i] = new Leg({
-            i,
-            this->servo_driver_,
-        });
+        this->legs_[i] = new Leg({i});
     }
 
     printf("Initialized LegController\n");

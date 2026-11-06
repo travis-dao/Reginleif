@@ -1,4 +1,5 @@
 #include "base.h"
+#include <algorithm>
 
 float SPEED_LERP_RATE = 4.0f;
 

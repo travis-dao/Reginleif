@@ -18,8 +18,8 @@ class Stabilizer {
         void init(i2c_master_bus_handle_t bus);
         void update(const float dt_s, ImuData& out);
 
-        Vec3 getAngles() const { return Vec3 { angles_deg.roll, -angles_deg.pitch, 0.0f }; }
-        Vec3 getGyro()   const { return gyro_dps; }
+        Vec3 angles() const { return Vec3 { angles_deg_.roll, -angles_deg_.pitch, 0.0f }; }
+        Vec3 gyro()   const { return gyro_dps_; }
 
     private:
         void updatePID( float dt_s, const Vec3& angles_in_deg, const Vec3& gyro_dps);
@@ -27,16 +27,16 @@ class Stabilizer {
         Mat3 getRotationMatrix(const Vec3& a);
 
 		Ism330 imu_;
-		IMU::EulerAngles angles_deg;
-        Vec3 target_angles_deg;
-        Vec3 gyro_dps;
-        Mat3 rot_mat;
+		IMU::EulerAngles angles_deg_;
+        Vec3 target_angles_deg_;
+        Vec3 gyro_dps_;
+        Mat3 rot_mat_;
 
-        float K_p;
-        float K_i;
-        float K_d;
+        float K_p_;
+        float K_i_;
+        float K_d_;
 
-        Vec3 integral_sum;
+        Vec3 integral_sum_;
 };
 
 #endif

@@ -1,6 +1,7 @@
 #ifndef LEG_h
 #define LEG_h
 
+#include "leg_config.h"
 #include "rtos_utils.h"
 #include "types.h"
 
@@ -17,6 +18,9 @@ struct FootPositionState {
 
     Vec3 stance_start_pos_lf;
     Vec3 stance_target_pos_lf;
+
+	Vec3 mpc_offset_lf;
+	Vec3 mpc_offset_cmd;
 };
 
 class Leg {
@@ -31,27 +35,40 @@ class Leg {
 		void startSwing(const Vec3& target_pos_lf);
 		void startStance(const Vec3& target_pos_lf);
 
-		bool isGrounded() const { return this->leg_state != SWING; }
+		bool grounded() const { return state_ != SWING; }
 
-		Vec3 getNominalLandingPos() const;
-		Vec3 getCurrentLegPos() const { return this->pos_state.foot_curr_pos_lf; }
+		Vec3 nominalLandingPos() const;
+		Vec3 currFootPos() const { return pos_state_.foot_curr_pos_lf; }
+		Vec3 rearFootPos() const;
+		float swingTimeRemainingS() const {
+			if (state_ == LegState::SWING) {
+				return 0.0f;
+			} else {
+				return (1.0f - swing_phase_) * Movement::SWING_DURATION_S;
+			}
+		}
 
-		void pidCorrection(const ImuData& imu_data);
+		void setMpcOffset(const Vec3& offset_lf) { pos_state_.mpc_offset_cmd = offset_lf; }
+
+		void applyPidCorrection(const ImuData& imu_data);
 
 	private:
-		Theta3 servo_angles_deg;
-		float swing_phase;
-		float stance_phase;
+		Theta3 servo_angles_deg_;
+		float swing_phase_;
+		float stance_phase_;
 
-		int id;
-		LegState leg_state;
-		FootPositionState pos_state;
+		int id_;
+		LegState state_;
+		FootPositionState pos_state_;
 
 		void moveLeg();
 
-		void setState(const LegState state) { this->leg_state = state; }
+		void setState(const LegState state) { state_ = state; }
 		void updateSwing(const float dt_s);
 		void updateStance(const float dt_s);
+
+		// m/s
+		static float stanceSpeed();
 };
 
 #endif

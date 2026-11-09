@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <math.h>
 #include <array>
+#include <optional>
 
 constexpr float RAD_TO_DEG = 57.2957795131f;
 constexpr float DEG_TO_RAD = 0.01745329252f;
@@ -63,5 +64,8 @@ struct Vec3 {
 };
 
 float dis(const float a, const float b);
+
+template <typename Tp>
+using Optional = std::optional<Tp>;
 
 #endif

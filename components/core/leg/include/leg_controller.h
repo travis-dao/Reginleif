@@ -8,26 +8,44 @@
 
 class LegController {
     public:
+		enum MoveState {
+			REST, WALK, RUN, TURN
+		};
+
         LegController();
 
         void update(const float dt_s, const ImuData& imu_data);
         void init(i2c_master_bus_handle_t bus);
         
-        bool isGrounded() { return this->grounded; }
-		int getSwingLeg() { return this->swing_leg; }
+        bool grounded() const { return grounded_; }
+		int swingLeg() const { return swing_leg_; }
+
+        float swingTimeRemainingS() const {
+            if (swing_leg_ < 0) {
+                return 0.0f;
+            } else {
+                return legs_[swing_leg_]->swingTimeRemainingS();
+            }
+        }
 
         Array<Vec3, 4> footPositionsBody() const;
         Array<Vec3, 4> landingTargetsBody() const;
+
+        void applyMpcCorrections(Array<Vec3, 4> offsets_lf);
 
     private:
         Leg* legs_[4];
 		Pca9685 servo_driver_;
 
-        Array<Theta3, 4> target_angles;
-        float target_angles_buffer[12];
+        MoveState state_;
 
-		int swing_leg;
-        bool grounded;
+        Array<Theta3, 4> target_angles_;
+        float target_angles_buffer_[12];
+
+		int swing_leg_;
+        bool grounded_;
+
+        void startWalk();
 };
 
 #endif

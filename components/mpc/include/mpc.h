@@ -16,7 +16,7 @@ struct MPCProblem {
     Vector<StateVec> x_ref;
 
     // r_i = foot position minus CoM, world frame, per step and per foot.
-    Vector<Array<eVec3, NUM_LEGS>> foot_rel_pos;
+    Vector<Array<Vec3f, NUM_LEGS>> foot_rel_pos;
 
     // true = foot i is in stance at step k, false = swing (force forced to 0).
     Vector<Array<bool, NUM_LEGS>> contact;
@@ -26,7 +26,7 @@ struct MPCProblem {
 struct MPCResult {
     bool success = false;
     Input u0;                  // forces to apply now (first step of U)
-    VecX U;                    // full stacked solution, size 12 * N
+    VecXf U;                    // full stacked solution, size 12 * N
     float solve_time_ms = 0.f;
 };
 
@@ -37,7 +37,7 @@ class MPC {
             float dt = 0.03f;        // prediction step [s]
 
             float mass = 12.0f;      // robot mass [kg]
-            eMat3 I_body = eMat3::Identity();  // body-frame inertia about the CoM
+            Mat3f I_body = Mat3f::Identity();  // body-frame inertia about the CoM
 
             float mu = 0.4f;         // friction coefficient
             float f_min = 0.0f;      // min normal force per stance foot [N]
@@ -46,7 +46,9 @@ class MPC {
             // State tracking weights (diagonal of Q), ordered
             // [roll pitch yaw | x y z | wx wy wz | vx vy vz | g]
             Eigen::Matrix<float, NX, 1> Q_diag = Eigen::Matrix<float, NX, 1>::Ones();
-            float R_weight = 1e-4f;  // force regularization (diagonal of R)
+            // Q_diag=np.array([5, 5, 10, 1, 1, 50, 1, 1, 1, 1, 1, 1, 0.0]),
+
+            float R_weight = 1e-3f;  // force regularization (diagonal of R)
         };
 
         MPC(const Config& cfg);
@@ -54,7 +56,8 @@ class MPC {
         // Build the QP from `problem`, solve it, and return the first-step forces.
         MPCResult solve(const MPCProblem& problem);
 
-        const Config& config() const { return cfg_; }
+        Config config() const { return cfg_; }
+        int N() const { return N_; }
 
     private:
         // 1. Linearized, discretized model at every step k = 0..N-1.
@@ -75,34 +78,34 @@ class MPC {
         void buildConstraints(const MPCProblem& problem);
 
         // 5. Hand H, q, C, lb, ub to the QP backend (OSQP).
-        bool solveQP(const MPCProblem& problem, VecX& U_out);
+        bool solveQP(const MPCProblem& problem, VecXf& U_out);
 
         // Shift a stacked solution forward one step: [u0 u1 ... uN-1] -> [u1 ... uN-1 uN-1]
-        VecX shift(const VecX& U) const;
-
-        Config cfg_;
-        int N;
+        VecXf shift(const VecXf& U) const;
 
         // Discrete model per step
         Vector<DiscreteModel> models_;
 
+        Config cfg_;
+        int N_;
+
         // Condensed dynamics
-        MatX A_qp_;  // 13N x 13
-        MatX B_qp_;  // 13N x 12N
+        MatXf A_qp_;  // 13N x 13
+        MatXf B_qp_;  // 13N x 12N
 
         // Cost weights (stacked over the horizon)
-        VecX L_diag_;  // 13N, repeated Q_diag
-        VecX K_diag_;  // 12N, repeated R_weight
+        VecXf L_diag_;  // 13N, repeated Q_diag
+        VecXf K_diag_;  // 12N, repeated R_weight
 
         // QP data
-        MatX H_;       // 12N x 12N
-        VecX q_;       // 12N
-        MatX C_;       // (5 * 4 * N) x 12N
-        VecX lb_;      // 5 * 4 * N
-        VecX ub_;      // 5 * 4 * N
+        MatXf H_;       // 12N x 12N
+        VecXf q_;       // 12N
+        MatXf C_;       // (5 * 4 * N) x 12N
+        VecXf lb_;      // 5 * 4 * N
+        VecXf ub_;      // 5 * 4 * N
 
-        VecX U_sol_;    // 12N, current solution (written by solveQP)
-        VecX U_prev_;   // 12N, last successful solution (warm start / fallback)
+        VecXf U_sol_;    // 12N, current solution (written by solveQP)
+        VecXf U_prev_;   // 12N, last successful solution (warm start / fallback)
 
         bool solver_initialized_ = false;   // for the one-time OSQP setup
 };

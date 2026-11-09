@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-constexpr float FEMUR_LENGTH_MM = 123.0f;
+constexpr float FEMUR_LENGTH_MM = 122.0f;
 constexpr float TIBIA_LENGTH_MM = 160.0f;
 constexpr float BODY_COXA_X_MM = 15.0f;
 
@@ -11,8 +11,8 @@ const float c_max = FEMUR_LENGTH_MM + TIBIA_LENGTH_MM;
 const float c_min = fabsf(FEMUR_LENGTH_MM - TIBIA_LENGTH_MM);
 
 namespace Movement {
-    constexpr float STEP_LENGTH_MM = 150.0f;
-    constexpr float STEP_HEIGHT_MM = 100.0f;
+    constexpr float STEP_LENGTH_MM = 100.0f;
+    constexpr float STEP_HEIGHT_MM = 60.0f;
     constexpr float SWING_DURATION_S = 0.250f;
     
     constexpr int next_leg_gait[5] = {
@@ -27,7 +27,7 @@ namespace Movement {
 namespace Offset {
     // in foot frame
     // (0, 0, 0) = hip of foot
-    constexpr Vec3 foot_neutral_offset_mag = { 120.0f, 120.0f, -40.0f };
+    constexpr Vec3 foot_neutral_offset_mag = { 120.0f, 100.0f, -40.0f };
     // from body frame
     // (0, 0, 0) = center of body
     constexpr Vec3 leg_base_offset_mag = { 34.0f, 43.5f, 0.0f };

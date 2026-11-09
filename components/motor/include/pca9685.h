@@ -1,7 +1,5 @@
-/*
- * PCA9685 16-channel, 12-bit PWM driver for ESP-IDF (i2c_master API, v5.2+)
- */
-#pragma once
+#ifndef PCA9685_h
+#define PCA9685_h
 
 #include <cstddef>
 #include <cstdint>
@@ -113,3 +111,5 @@ class Pca9685 {
         int                     timeout_ms_ = 100;
         bool                    stagger_    = false;
 };
+
+#endif

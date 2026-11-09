@@ -1,19 +1,20 @@
 #include "esp_log.h"
 #include "stabilizer.h"
+#include <algorithm>
 
 
 static constexpr float MAX_COMP_DEG = 15.0f;
 static constexpr float INTEGRAL_MAX = 10.0f;
 
 Stabilizer::Stabilizer(const Config& config)
-    : target_angles_deg{0.0f, 0.0f, 0.0f},
-      gyro_dps{0.0f, 0.0f, 0.0f},
-      K_p(config.K_p),
-      K_i(config.K_i),
-      K_d(config.K_d),
-      integral_sum{0.0f, 0.0f, 0.0f}
+    : target_angles_deg_{0.0f, 0.0f, 0.0f},
+      gyro_dps_{0.0f, 0.0f, 0.0f},
+      K_p_(config.K_p),
+      K_i_(config.K_i),
+      K_d_(config.K_d),
+      integral_sum_{0.0f, 0.0f, 0.0f}
 {
-    rot_mat = getRotationMatrix(Vec3{0.0f, 0.0f, 0.0f});   // identity until the first update
+    rot_mat_ = getRotationMatrix(Vec3{0.0f, 0.0f, 0.0f});   // identity until the first update
 }
 
 void Stabilizer::init(i2c_master_bus_handle_t bus) {
@@ -27,7 +28,7 @@ void Stabilizer::init(i2c_master_bus_handle_t bus) {
     cfg.fusion         = Ism330::FusionType::Mahony;
     cfg.mahony_kp      = 0.5f; // TODO -- tune btwn 0.1 to 1.0
 
-    ESP_ERROR_CHECK(this->imu_.init(cfg));
+    ESP_ERROR_CHECK(imu_.init(cfg));
 
     vTaskDelay(pdMS_TO_TICKS(1000));
     printf("Initialized IMU\n");
@@ -36,27 +37,27 @@ void Stabilizer::init(i2c_master_bus_handle_t bus) {
     vTaskDelay(pdMS_TO_TICKS(500));
     printf("Calibrating IMU, do not move\n");
 
-    ESP_ERROR_CHECK(this->imu_.calibrate(200));
+    ESP_ERROR_CHECK(imu_.calibrate(200));
 
     printf("IMU calibration complete\n");
 }
 
 void Stabilizer::updateImu() {
-    ESP_ERROR_CHECK(this->imu_.getAngles(this->angles_deg));
+    ESP_ERROR_CHECK(imu_.angles(angles_deg_));
 
-    Vec3 g = this->imu_.lastGyro();
+    Vec3 g = imu_.lastGyro();
 
     // Assumes lastGyro() reports degrees per second.
-    this->gyro_dps = Vec3 { g.x, -g.y, 0.0f };
+    gyro_dps_ = Vec3 { g.x, -g.y, 0.0f };
 }
 
 void Stabilizer::updatePID(float dt_s, const Vec3& angles_in_deg, const Vec3& gyro_dps) {
     if (dt_s <= 0.0f) return;
 
-    Vec3 error = this->target_angles_deg - angles_in_deg;
+    Vec3 error = target_angles_deg_ - angles_in_deg;
     error.z = 0.0f;
 
-    Vec3 d_term = gyro_dps * (-1.0f) * this->K_d;
+    Vec3 d_term = gyro_dps * (-1.0f) * K_d_;
 
     // Apply conditional anti-windup to the roll and pitch integrators.
     // Keep the integral from growing when doing so would worsen saturation.
@@ -81,25 +82,25 @@ void Stabilizer::updatePID(float dt_s, const Vec3& angles_in_deg, const Vec3& gy
         }
     };
 
-    updateIntegralAxis(error.x, d_term.x, this->K_p, this->K_i, this->integral_sum.x);
-    updateIntegralAxis(error.y, d_term.y, this->K_p, this->K_i, this->integral_sum.y);
-    this->integral_sum.z = 0.0f;
+    updateIntegralAxis(error.x, d_term.x, K_p_, K_i_, integral_sum_.x);
+    updateIntegralAxis(error.y, d_term.y, K_p_, K_i_, integral_sum_.y);
+    integral_sum_.z = 0.0f;
 
-    Vec3 comp_deg = error * this->K_p + this->integral_sum * this->K_i + d_term;
+    Vec3 comp_deg = error * K_p_ + integral_sum_ * K_i_ + d_term;
 
     comp_deg.x = std::clamp(comp_deg.x, -MAX_COMP_DEG, MAX_COMP_DEG);
     comp_deg.y = std::clamp(comp_deg.y, -MAX_COMP_DEG, MAX_COMP_DEG);
     comp_deg.z = 0.0f;
 
-    this->rot_mat = getRotationMatrix(comp_deg * DEG_TO_RAD);
+    rot_mat_ = getRotationMatrix(comp_deg * DEG_TO_RAD);
 }
 
 void Stabilizer::update(const float dt_s, ImuData& out_data) {
     updateImu();
 
-    updatePID(dt_s, getAngles(), getGyro());
+    updatePID(dt_s, angles(), gyro());
 
-    out_data.rot_mat = this->rot_mat;
+    out_data.rot_mat = rot_mat_;
     out_data.valid = true;
 }
 
@@ -122,13 +123,13 @@ Mat3 Stabilizer::getRotationMatrix(const Vec3& a) {
 
 
 // esp_err_t Stabilizer::update(const float dt_s, SharedData& out) {
-//     esp_err_t err_angle = this->imu_.getAngles(this->angles);
+//     esp_err_t err_angle = imu_.angles(angles);
 //     if (err_angle != OK) return err_angle;
 
-//     esp_err_t err_gyro = this->imu_.readGyro(this->gyro);
+//     esp_err_t err_gyro = imu_.readGyro(gyro);
 //     if (err_gyro != OK) return err_gyro;
 
-//     out.angles_rad = Vec3 {this->angles.roll, this->angles.pitch, this->angles.yaw} * DEG_TO_RAD;
+//     out.angles_rad = Vec3 {angles.roll, angles.pitch, angles.yaw} * DEG_TO_RAD;
 //     out.rpy_rad  = Vec3 {angles.roll, angles.pitch, angles.yaw} * DEG_TO_RAD;
 //     out.gyro_rad_s = gyro * DEG_TO_RAD;   // ADAPT: ISM330 reports dps; convert and remove bias
 //     out.valid = true;

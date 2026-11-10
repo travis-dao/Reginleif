@@ -1,4 +1,5 @@
 #include "mpc.h"
+#include "eigen.h"
 #include "esp_timer.h"
 
 MPC::MPC(const Config& cfg) : 
@@ -44,6 +45,13 @@ MPC::MPC(const Config& cfg) :
         L_diag_.segment(NX * i, NX) = cfg_.Q_diag;
     }
     K_diag_ = VecXf::Constant(NU * N_, cfg_.R_weight);
+    D_ = MatXf::Identity(NU * N_, NU * N_);
+    for (int i = NU; i < NU * N_; i++) {
+        D_(i, i- NU) = -1.0f;
+    }
+
+    DtWD_ = cfg_.W_weight * D_.transpose() * D_;
+    DtW_ = cfg_.W_weight * D_.transpose();
 
     // init QP solution matricies
     U_sol_.setZero(NU * N_);
@@ -91,11 +99,17 @@ void MPC::buildCost(const MPCProblem& problem) {
     VecXf error = A_qp_ * x0 - Y;
     
     // linear term
-    q_ = 2 * B_qp_.transpose() * L_diag_.asDiagonal() * error;
+    q_ = 2.0f * B_qp_.transpose() * L_diag_.asDiagonal() * error;
 
     // quadratic term
-    H_ = 2 * (B_qp_.transpose() * L_diag_.asDiagonal() * B_qp_);
+    H_ = 2.0f * (B_qp_.transpose() * L_diag_.asDiagonal() * B_qp_);
     H_.diagonal() += 2 * K_diag_;
+
+    VecXf d0 = VecXf::Zero(NU * N_); // last applied force
+    d0.head(NU) = U_prev_.head(NU);
+
+    H_ += 2.0f * DtWD_;
+    q_ += 2.0f * DtW_ * d0;
 }
 
 void MPC::buildConstraints(const MPCProblem& problem) {

@@ -48,7 +48,8 @@ class MPC {
             Eigen::Matrix<float, NX, 1> Q_diag = Eigen::Matrix<float, NX, 1>::Ones();
             // Q_diag=np.array([5, 5, 10, 1, 1, 50, 1, 1, 1, 1, 1, 1, 0.0]),
 
-            float R_weight = 1e-3f;  // force regularization (diagonal of R)
+            float R_weight = 1e-3f;  // force regularization (diagonal of R), penalize force magnitude
+            float W_weight = 1e-2f;  // force change penalty, penalize fast force changes during leg transition
         };
 
         MPC(const Config& cfg);
@@ -96,6 +97,10 @@ class MPC {
         // Cost weights (stacked over the horizon)
         VecXf L_diag_;  // 13N, repeated Q_diag
         VecXf K_diag_;  // 12N, repeated R_weight
+
+        MatXf D_;       // 12N x 12N, captures differences between consecutive forces in the planned horizon
+        MatXf DtWD_;     // Dt = D transpose, W = force change penalty weight
+        MatXf DtW_;
 
         // QP data
         MatXf H_;       // 12N x 12N

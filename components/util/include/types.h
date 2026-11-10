@@ -19,6 +19,9 @@ struct Theta3 {
 template <typename T, std::size_t N>
 using Array = std::array<T, N>;
 
+template <typename T1, typename T2, typename T3>
+using Triple = std::tuple<T1, T2, T3>;
+
 struct Mat3 {
     Array<Array<float, 3>, 3> data{};
 

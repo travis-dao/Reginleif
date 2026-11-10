@@ -25,6 +25,8 @@ struct FootPositionState {
 
 class Leg {
 	public:
+		const float MPC_OFFSET_TAU_S = 0.08; // higher = slower response, more smoothing
+
 		struct Config {
 			int id;
 		};
@@ -52,6 +54,9 @@ class Leg {
 
 		void applyPidCorrection(const ImuData& imu_data);
 
+		// m/s
+		static float stanceSpeed();
+
 	private:
 		Theta3 servo_angles_deg_;
 		float swing_phase_;
@@ -66,9 +71,6 @@ class Leg {
 		void setState(const LegState state) { state_ = state; }
 		void updateSwing(const float dt_s);
 		void updateStance(const float dt_s);
-
-		// m/s
-		static float stanceSpeed();
 };
 
 #endif

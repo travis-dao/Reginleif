@@ -82,30 +82,20 @@ Vector<StateVec> MotionSubsystem::reference(const State& s0) const {
 Contact MotionSubsystem::contactSchedule() const {
     const int N = mpc_.N();
     const float dt = mpc_.config().dt;
-    const float T = Movement::SWING_DURATION_S;
 
     Contact contact(N);
     for (auto& c : contact) {
         c.fill(true);
     }
-
-    int leg = leg_controller_.swingLeg();
-    if (leg < 0) {
-        return contact;
-    }
-
-    float t0 = 0.0;
-    float t1 = leg_controller_.swingTimeRemainingS();
-    while (t0 < N * dt) {
+    
+    for (const auto& [leg, t0, t1] : leg_controller_.swingSchedule(N * dt)) {
         for (int i = 0; i < N; i++) {
-            const float tm = (i + 0.5) * dt;
-            if (t0 <= tm && tm < t1) {
+            const float tm = (i + 0.5f) * dt;
+
+            if (t0 <= tm && tm <= t1) {
                 contact[i][leg] = false;
             }
         }
-        leg = Movement::next_leg_gait[leg + 1];
-        t0 = t1;
-        t1 += T;
     }
 
     return contact;

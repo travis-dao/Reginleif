@@ -7,8 +7,6 @@
 #include <algorithm>
 #include <cmath>
 
-float MPC_OFFSET_TAU_S = 0.08; // higher = slower response, more smoothing
-
 Theta3 clampToLimits(const Theta3& angles_deg, const int leg_idx) {
 	const LegServoLimits& lim = ServoConfig::limits[leg_idx];
 
@@ -180,7 +178,7 @@ void Leg::applyPidCorrection(const ImuData& imu_data) {
 }
 
 float Leg::stanceSpeed() {
-	return Movement::STEP_LENGTH_MM / (Movement::SWING_DURATION_S * 3.0f);
+	return Movement::STEP_LENGTH_MM / (Movement::SWING_DURATION_S * 3.0f + Movement::GAP_DURATION_S * 4.0f);
 }
 
 Vec3 Leg::rearFootPos() const {

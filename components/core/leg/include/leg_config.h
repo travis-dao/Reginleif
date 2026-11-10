@@ -14,6 +14,7 @@ namespace Movement {
     constexpr float STEP_LENGTH_MM = 100.0f;
     constexpr float STEP_HEIGHT_MM = 60.0f;
     constexpr float SWING_DURATION_S = 0.250f;
+	constexpr float GAP_DURATION_S = 0.1; // gap between swing
     
     constexpr int next_leg_gait[5] = {
         /* -1 -> */ 0,

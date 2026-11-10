@@ -25,7 +25,7 @@ class MotionSubsystem {
             size_t horizon = 10;
 
             float z_des_m = 0.0f;
-            float vx_des_mps = Movement::STEP_LENGTH_MM * MM_TO_M / (3.0f * Movement::SWING_DURATION_S);
+            float vx_des_mps = Leg::stanceSpeed() * MM_TO_M;
             Optional<float> yaw_des = std::nullopt;
 
             float solve_period_s = 0.03f;

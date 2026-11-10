@@ -1,4 +1,5 @@
 #include "leg_controller.h"
+#include "leg_config.h"
 #include "servo.h"
 #include "frame.h"
 
@@ -11,6 +12,8 @@ LegController::LegController() {
 
     grounded_ = true;
     swing_leg_ = -1;
+    last_swing_leg_ = -1;
+    gap_remaining_s = 0.0f;
     state_ = MoveState::REST;
 }
 
@@ -36,24 +39,37 @@ void LegController::init(i2c_master_bus_handle_t bus) {
 
 void LegController::update(float dt_s, const ImuData& imu_data) {
     // gait sequencing
-    bool all_grounded_ = true;
+    bool all_grounded = true;
     for (int i = 0; i < 4; i++) {
         if (!legs_[i]->grounded()) { 
-            all_grounded_ = false;
+            all_grounded = false;
             break;
         }
     }
-    grounded_ = all_grounded_;
 
-    // only start next swing sequence if all legs are grounded_
+    // swing just ended -> all-stance gap
+    if (all_grounded && !grounded_) {
+        swing_leg_ = -1;
+        gap_remaining_s = Movement::GAP_DURATION_S;
+    }
+    grounded_ = all_grounded;
+
+    // only start next swing sequence if all legs are grounded
     if (grounded_) {
         if (state_ == MoveState::REST) {
             startWalk();
+            gap_remaining_s = 0.0;
         }
 
-        int next = Movement::next_leg_gait[swing_leg_ + 1];
-        swing_leg_ = next;
-        legs_[next]->startSwing(legs_[next]->nominalLandingPos());
+        gap_remaining_s -= dt_s;
+
+        if (gap_remaining_s <= 0.0f) {
+            int next = Movement::next_leg_gait[swing_leg_ + 1];
+            last_swing_leg_ = next;
+            swing_leg_ = next;
+            legs_[next]->startSwing(legs_[next]->nominalLandingPos());
+
+        }
     }
 
     // leg movement calculations
@@ -98,4 +114,40 @@ void LegController::applyMpcCorrections(Array<Vec3, 4> offsets_lf) {
     for (int i = 0; i < 4; i++) {
         legs_[i]->setMpcOffset(offsets_lf[i]);
     }
+}
+
+SwingSchedule LegController::swingSchedule(float horizon_s) const {
+    // [(leg, t_start, t_end)] of predicted swings, seconds from now, including gaps
+
+    if (state_ != MoveState::WALK) {
+        return {};
+    }
+
+    const float T = Movement::SWING_DURATION_S;
+    const float G = Movement::GAP_DURATION_S;
+
+    SwingSchedule out;
+
+    float t_next;
+
+    if (swing_leg_ >= 0) {
+        const float t_end = swingTimeRemainingS();
+
+        out.emplace_back(swing_leg_, 0.0f, t_end);
+        t_next = t_end + G;
+    } else {
+        t_next = std::max(gap_remaining_s, 0.0f);
+    }
+
+    int last = last_swing_leg_;
+
+    while (t_next < horizon_s) {
+        last = Movement::next_leg_gait[last + 1];
+
+        out.emplace_back(last, t_next, t_next + T);
+
+        t_next += T + G;
+    }
+
+    return out;
 }

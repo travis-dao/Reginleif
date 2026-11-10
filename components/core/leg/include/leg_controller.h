@@ -5,6 +5,9 @@
 #include "pca9685.h"
 #include "rtos_utils.h"
 #include "leg_config.h"
+#include "eigen.h"
+
+using SwingSchedule = Vector<Triple<int, float, float>>;
 
 class LegController {
     public:
@@ -33,6 +36,8 @@ class LegController {
 
         void applyMpcCorrections(Array<Vec3, 4> offsets_lf);
 
+        SwingSchedule swingSchedule(float horizon_s) const;
+
     private:
         Leg* legs_[4];
 		Pca9685 servo_driver_;
@@ -43,6 +48,8 @@ class LegController {
         float target_angles_buffer_[12];
 
 		int swing_leg_;
+        int last_swing_leg_;
+        float gap_remaining_s;
         bool grounded_;
 
         void startWalk();

@@ -137,43 +137,56 @@ VecXf MPC::shift(const VecXf& U) const {
 }
 
 extern "C" {
-    #include "cpg_workspace.h"
-    #include "cpg_solve.h"
+#include "osqp.h"
+#include "workspace.h"
 }
+
 #include <cstring>
 
 bool MPC::solveQP(const MPCProblem& problem, VecXf& U_out) {
-    // err = A_qp * x0 - Y (same as in builtCost)
+    // err = A_qp * x0 - Y
     VecXf Y(NX * N_);
-    for (int i = 0; i < N_; i++) {
+    for (int i = 0; i < N_; ++i) {
         Y.segment(NX * i, NX) = problem.x_ref[i];
     }
+
     const VecXf err = A_qp_ * problem.x0.toVector() - Y;
 
-    // parameters
-    for (int k = 0; k < B_qp_.size(); k++) {
-        mpc_cpg_update_B_qp(k, B_qp_.data()[k]);
-    }
-    for (int k = 0; k < err.size(); k++) {
-        mpc_cpg_update_err(k, err(k));
-    }
+    // Build the condensed QP:
+    // P = 2 * (B' * W * B + R * I)
+    // q = 2 * B' * W * err
+    const VecXf weights = L_diag_;
+    const MatXf P_dense = 2.0f * (B_qp_.transpose() * weights.asDiagonal() * B_qp_ + cfg_.R_weight * MatXf::Identity(NU * N_, NU * N_));
 
-    for (int i = 0; i < N_; i++) {
-        for (int j = 0; j < NUM_LEGS; j++) {
-            const int r = CONSTRAINTS_PER_FOOT * (NUM_LEGS * i + j) + PYRAMID_ROWS;
+    const VecXf q = 2.0f * B_qp_.transpose() * weights.asDiagonal() * err;
+    // Update P using the exact upper-triangular CSC ordering used
+    // when generating the OSQP solver.
+    //
+    // Update q and the constraint bounds using the generated OSQP API.
+    // The generated workspace must have been initialized before this call.
+
+    // TODO: populate generated P-value and q-value arrays in their
+    // generated CSC order, then call OSQP matrix/vector update APIs.
+
+    // Vertical force bounds.
+    for (int i = 0; i < N_; ++i) {
+        for (int j = 0; j < NUM_LEGS; ++j) {
             const int k = NUM_LEGS * i + j;
-            mpc_cpg_update_lb_f(k, lb_(r));
-            mpc_cpg_update_ub_f(k, ub_(r));
+            const int r =
+                CONSTRAINTS_PER_FOOT * (NUM_LEGS * i + j)
+                + PYRAMID_ROWS;
+
+            // Write these into the generated lower/upper bound arrays
+            // at the force-constraint row indices.
+            (void)k;
+            (void)r;
         }
     }
 
-    mpc_cpg_solve();
+    // Call the generated OSQP solve entry point here.
+    // Check its status value, then copy the primal solution into U_out.
 
-    if (strcmp(mpc_CPG_Result.info->status, "solved") != 0) return false;
-    for (int k = 0; k < NU * N_; k++) {
-        U_out(k) = mpc_CPG_Result.prim->U[k];
-    }
-    return true;
+    return false; // Replace after wiring the generated API.
 }
 
 MPCResult MPC::solve(const MPCProblem& problem) {

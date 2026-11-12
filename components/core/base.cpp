@@ -3,7 +3,12 @@
 float SPEED_LERP_RATE = 4.0f;
 
 Base::Base(const Config& cfg)
-	: motion_subsystem_(cfg.motion_subsystem_cfg), 
+	: motion_subsystem_(
+		cfg.motion_subsystem_cfg, 
+		cfg.mpc_cfg, 
+		cfg.state_estimator_cfg, 
+		leg_controller_
+	  ), 
 	  leg_controller_(),
 	  cfg_(cfg) 
 {
@@ -53,7 +58,6 @@ void Base::updateSpeed(const float dt_s) {
 
 void Base::update(const float dt_s, const ImuData& imu_data) {
 	target_orientation_rad_ = imu_data.angles_rad * RAD_TO_DEG;
-
 	updateSpeed(dt_s);
 	
 	motion_subsystem_.update(dt_s, imu_data);

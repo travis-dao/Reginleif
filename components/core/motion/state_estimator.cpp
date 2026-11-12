@@ -1,17 +1,18 @@
 #include "state_estimator.h"
 #include "frame.h"
+#include "leg_controller.h"
 
-/// rpy = (roll, pitch, yaw) [rad], ZYX convention -> body-to-world rotation.
+// rpy = (roll, pitch, yaw) [rad], ZYX convention -> body-to-world rotation.
 Mat3f rotFromRpy(const Vec3f& rpy) {
-    using AA = Eigen::AngleAxisd;
+    using AA = Eigen::AngleAxisf;
     return (AA(rpy.z(), Vec3f::UnitZ()) *
             AA(rpy.y(), Vec3f::UnitY()) *
             AA(rpy.x(), Vec3f::UnitX())).toRotationMatrix();
 }
 
 // ----------------------------------------------------------------------
-StateEstimator::StateEstimator(StateEstimator::Config cfg)
-    : leg_controller_(cfg.leg_controller), 
+StateEstimator::StateEstimator(StateEstimator::Config cfg, LegController& leg_controller)
+    : leg_controller_(leg_controller), 
       cfg_(cfg) 
 {
     t_stance_.fill(1e9f);

@@ -10,6 +10,8 @@ class Base {
 	public:
 		struct Config {
 			MotionSubsystem::Config& motion_subsystem_cfg;
+            MPC::Config& mpc_cfg;
+            StateEstimator::Config& state_estimator_cfg;
 		};
 
 		enum MoveState {

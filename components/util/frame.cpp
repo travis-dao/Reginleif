@@ -45,11 +45,11 @@ Mat3f rotationMatrixYaw(float yaw) {
 
 // ----------------------------------------------------------------------
 Vec3 legToBodyFrame(int leg_idx, const Vec3& foot_pos_lf) {
-    return toVec3(toEigen(Offset::leg_base_pos_bf[leg_idx]) + toEigen(foot_pos_lf));
+    return Offset::leg_base_pos_bf[leg_idx] + foot_pos_lf;
 }
 
 Vec3 bodyToLegFrame(int leg_idx, const Vec3& foot_pos_bf) {
-    return toVec3(toEigen(foot_pos_bf) - toEigen(Offset::leg_base_pos_bf[leg_idx]));
+    return foot_pos_bf - Offset::leg_base_pos_bf[leg_idx];
 }
 
 Vec3 legToWorldFrame(int leg_idx, const Vec3& foot_pos_lf, const Vec3& body_pos_wf, float yaw) {

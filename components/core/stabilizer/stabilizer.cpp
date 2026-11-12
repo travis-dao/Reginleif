@@ -43,7 +43,7 @@ void Stabilizer::init(i2c_master_bus_handle_t bus) {
 }
 
 void Stabilizer::updateImu() {
-    ESP_ERROR_CHECK(imu_.angles(angles_deg_));
+    ESP_ERROR_CHECK(imu_.getAngles(angles_deg_));
 
     Vec3 g = imu_.lastGyro();
 

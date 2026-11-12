@@ -6,12 +6,18 @@
 
 #include "base.h"
 #include "i2c.h"
+#include "motion_subsystem.h"
 #include "rtos_utils.h"
 #include "stabilizer.h"
+#include "state_estimator.h"
+
+static const char *TAG = "main";
 
 Mailbox<ImuData> imu_data;
 
-static const char *TAG = "main";
+MPC::Config mpc_cfg;
+MotionSubsystem::Config motion_system_cfg;
+StateEstimator::Config state_estimator_cfg;
 
 static void stabilizer_task(void *arg) {   
     auto *stabilizer = static_cast<Stabilizer*>(arg);
@@ -64,8 +70,17 @@ extern "C" void app_main() {
     static I2CBus i2c_;
     ESP_ERROR_CHECK(i2c_.init());
 
-    static Stabilizer stabilizer_({0.0f, 0.0f, 0.0f});
-    static Base base_;
+    static Stabilizer stabilizer_({
+        0.0f, 
+        0.0f, 
+        0.0f
+    });
+    
+    static Base base_({
+        motion_system_cfg,
+        mpc_cfg,
+        state_estimator_cfg
+    });
 
     base_.init(i2c_.handle());
     stabilizer_.init(i2c_.handle());

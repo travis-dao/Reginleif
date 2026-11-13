@@ -12,8 +12,8 @@
 using SwingSchedule = Vector<Triple<int, float, float>>;
 
 struct GaitConfig {
-    float time_stance_s = 3.0f * Movement::SWING_DURATION_S + 4.0f * Movement::GAP_DURATION_S;
-    float v_max_mm_s = Movement::STEP_LENGTH_MM / time_stance_s;
+    float time_stance_s = 3.0f * MovementConfig::SWING_DURATION_S + 4.0f * MovementConfig::GAP_DURATION_S;
+    float v_max_mm_s = MovementConfig::STEP_LENGTH_MM / time_stance_s;
     float max_step_y_mm = 20.0f; // mm, sideways reach -- TUNE
 };
 
@@ -71,6 +71,7 @@ class LegController {
         void setState(MoveState new_state);
 
         void updateTwist(const float dt_s);
+        Gait updateGaitOrder();
 
         Twist limit(Twist twist) const;
 
@@ -80,6 +81,7 @@ class LegController {
         MoveState state_;
         const GaitConfig gait_cfg_;
         const MotionLimits limits_;
+        Gait gait_;
         TwistState twist_;
         Array<Vec3, 4> nominal_leg_pos_bf_; // reference points for calculating rotation velocity during turning
 

@@ -25,7 +25,7 @@ struct FootState {
 
 struct VelState {
 	Vec3 stance_vel = Vec3{0.0f, 0.0f, 0.0f};
-	Vec3 step_vec = Vec3{Movement::STEP_LENGTH_MM, 0.0f, 0.0f};
+	Vec3 step_vec = Vec3{MovementConfig::STEP_LENGTH_MM, 0.0f, 0.0f};
 };
 
 class Leg {

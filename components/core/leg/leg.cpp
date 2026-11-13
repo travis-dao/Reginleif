@@ -135,7 +135,7 @@ void Leg::updateStance(const float dt_s) {
 
 void Leg::updateSwing(const float dt_s) {
     // advance and clamp swing progress
-    swing_phase_ += dt_s / Movement::SWING_DURATION_S;
+    swing_phase_ += dt_s / MovementConfig::SWING_DURATION_S;
 
     if (swing_phase_ > 1.0f) {
         swing_phase_ = 1.0f;
@@ -153,7 +153,7 @@ void Leg::updateSwing(const float dt_s) {
     foot_state_.target.y = start.y + alpha * (target.y - start.y);
 
     // lift the foot above the start-to-target line
-    const float clearance = Movement::STEP_HEIGHT_MM * pow(sinf(PI * t), 2);
+    const float clearance = MovementConfig::STEP_HEIGHT_MM * pow(sinf(PI * t), 2);
     foot_state_.target.z = (start.z + t * (target.z - start.z)) + clearance;
 
     if (t >= 1.0f) {
@@ -198,7 +198,7 @@ void Leg::setState(const LegState state) { state_ = state; }
 bool Leg::grounded() const { return state_ != SWING; }
 float Leg::swingTimeRemainingS() const {
 	if (state_ == LegState::SWING) return 0.0f;
-	else return (1.0f - swing_phase_) * Movement::SWING_DURATION_S;
+	else return (1.0f - swing_phase_) * MovementConfig::SWING_DURATION_S;
 }
 Vec3 Leg::nominalLandingPos() const {
 	Vec3 target = Offset::neutral_foot_pos_lf[id_];

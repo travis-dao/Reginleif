@@ -25,8 +25,8 @@ struct Command {
 class MotionSubsystem {
     public:
         enum Mode {
-            STAND, // lc IDLE
-            WALK // lc WALK/STOPPING
+            STAND, // lc MoveState::IDLE
+            WALK // lc MoveState::WALKING/STOPPING
         };
 
         struct Config {

@@ -20,7 +20,8 @@ LegController::LegController() {
     swing_leg_ = -1;
     last_swing_leg_ = -1;
     gap_remaining_s = 0.0f;
-    state_ = IDLE;
+    state_ = MoveState::IDLE;
+    gait_ = Gait::WALK;
 }
 
 void LegController::init(i2c_master_bus_handle_t bus) {
@@ -57,21 +58,22 @@ void LegController::update(float dt_s, const ImuData& imu_data) {
     // swing just ended -> all-stance gap
     if (all_grounded && !grounded_) {
         swing_leg_ = -1;
-        gap_remaining_s = Movement::GAP_DURATION_S;
+        gap_remaining_s = MovementConfig::GAP_DURATION_S;
+        gait_ = updateGaitOrder();
     }
     grounded_ = all_grounded;
 
     // start next swing??
-    if (grounded_ && state_ != IDLE) {
+    if (grounded_ && state_ != MoveState::IDLE) {
         gap_remaining_s -= dt_s;
         if (gap_remaining_s <= 0.0f) { // stance gap done -> start next swing
-            if (state_ == WALKING) {
-                int next = Movement::next_leg_gait[swing_leg_ + 1];
+            if (state_ == MoveState::WALKING) {
+                int next = MovementConfig::getNextLeg(gait_, swing_leg_);
                 last_swing_leg_ = next;
                 swing_leg_ = next;
                 legs_[next]->startSwing(legs_[next]->nominalLandingPos());
-            } else { // STOPPING
-                setState(IDLE);
+            } else { // MoveState::STOPPING
+                setState(MoveState::IDLE);
             }
         }
     }
@@ -94,11 +96,11 @@ void LegController::applyMpcCorrections(Array<Vec3, 4> offsets_lf) {
 
 void LegController::updateTwist(const float dt_s) {
     // update commanded motion
-    if (state_ == IDLE) {
+    if (state_ == MoveState::IDLE) {
         twist_.curr.v = 0.0f;
         twist_.curr.w = 0.0f;
         twist_.geom = limit(twist_.cmd);
-    } else if (state_ == WALKING) {
+    } else if (state_ == MoveState::WALKING) {
         Twist cmd = limit(twist_.cmd); // limited command
         twist_.geom = cmd; // update geo
 
@@ -121,19 +123,26 @@ void LegController::updateTwist(const float dt_s) {
     }
 }
 
+Gait LegController::updateGaitOrder() {
+    if (fabsf(twist_.curr.v) < 5.0f && fabsf(twist_.curr.w) > 0.2)
+        return twist_.curr.w > 0.0f ? Gait::TURN_L : Gait::TURN_R;
+    else
+        return Gait::WALK;
+}
+
 
 // --------------- commands ---------------
 void LegController::startWalk() {
     swing_leg_ = -1; // for gap phase
-    state_ = WALKING;
+    state_ = MoveState::WALKING;
 
     for (Leg* leg : legs_) leg->startStance(leg->currFootPos());
 }
 void LegController::requestStart() { 
-    if (state_ == IDLE || state_ == STOPPING) setState(WALKING);
+    if (state_ == MoveState::IDLE || state_ == MoveState::STOPPING) setState(MoveState::WALKING);
 }
 void LegController::requestStop() { 
-    if (state_ == WALKING) setState(STOPPING);
+    if (state_ == MoveState::WALKING) setState(MoveState::STOPPING);
 }
 
 
@@ -142,10 +151,10 @@ void LegController::setState(LegController::MoveState new_state) {
     LegController::MoveState old = state_;
     state_ = new_state;
 
-    if (old == IDLE && new_state == WALKING) {
+    if (old == MoveState::IDLE && new_state == MoveState::WALKING) {
         for (Leg* leg : legs_) leg->resumeStance();
         gap_remaining_s = 0.0f;
-    } else if (new_state == IDLE) { // STOPPING -> IDLE
+    } else if (new_state == MoveState::IDLE) { // MoveState::STOPPING -> MoveState::IDLE
         swing_leg_ = -1;
         for (Leg* leg : legs_) leg->hold();
     }
@@ -155,7 +164,7 @@ void LegController::setBodyCommand(const float v_mm_s, const float w_rad_s) { tw
 
 // --------------- getters ---------------
 bool LegController::grounded() const { return grounded_; }
-bool LegController::idle() const { return state_ == IDLE; }
+bool LegController::idle() const { return state_ == MoveState::IDLE; }
 int LegController::swingLeg() const { return swing_leg_; }
 GaitConfig LegController::gaitConfig() const { return gait_cfg_; }
 float LegController::swingTimeRemainingS() const {
@@ -181,10 +190,10 @@ Array<Vec3, 4> LegController::landingTargetsBody() const {
 
 // [(leg, t_start, t_end)] of predicted swings, seconds from now, including gaps
 SwingSchedule LegController::swingSchedule(float horizon_s) const {
-    if (state_ == IDLE) return {}; // IDLE = no predicted swing
+    if (state_ == MoveState::IDLE) return {}; // MoveState::IDLE = no predicted swing
 
-    const float T = Movement::SWING_DURATION_S;
-    const float G = Movement::GAP_DURATION_S;
+    const float T = MovementConfig::SWING_DURATION_S;
+    const float G = MovementConfig::GAP_DURATION_S;
 
     SwingSchedule out;
 
@@ -200,14 +209,14 @@ SwingSchedule LegController::swingSchedule(float horizon_s) const {
         t_next = fmaxf(gap_remaining_s, 0.0f);
     }
 
-    // STOPPING = finish current swing, no more afterwards
-    if (state_ == STOPPING) return out;
+    // MoveState::STOPPING = finish current swing, no more afterwards
+    if (state_ == MoveState::STOPPING) return out;
 
     int last = last_swing_leg_;
 
     // predict future swings
     while (t_next < horizon_s) {
-        last = Movement::next_leg_gait[last + 1];
+        last = MovementConfig::getNextLeg(gait_, last_swing_leg_);
 
         out.emplace_back(last, t_next, t_next + T);
 
@@ -227,7 +236,7 @@ Twist LegController::limit(Twist twist) const {
         float scale_y = abs(twist.w * p.x) * T;
         
         k = fminf(k, fminf(
-            scale_x > 1e-9f ? Movement::STEP_LENGTH_MM / scale_x : 1.0f,
+            scale_x > 1e-9f ? MovementConfig::STEP_LENGTH_MM / scale_x : 1.0f,
             scale_y > 1e-9f ? gait_cfg_.max_step_y_mm / scale_y : 1.0f
         ));
     }

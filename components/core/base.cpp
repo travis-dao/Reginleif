@@ -36,8 +36,8 @@ void Base::updateSpeed(const float dt_s) {
 	case WALK:
 	case RUN:
 		target_speed_mm_s =
-			(Movement::STEP_LENGTH_MM * 2) /
-			(Movement::SWING_DURATION_S * 3); // calc stance speed
+			(MovementConfig::STEP_LENGTH_MM * 2) /
+			(MovementConfig::SWING_DURATION_S * 3); // calc stance speed
 		break;
 	default:
 		target_speed_mm_s = 0.0f;

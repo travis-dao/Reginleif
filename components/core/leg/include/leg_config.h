@@ -10,20 +10,57 @@ constexpr float BODY_COXA_X_MM = 15.0f;
 const float c_max = FEMUR_LENGTH_MM + TIBIA_LENGTH_MM;
 const float c_min = fabsf(FEMUR_LENGTH_MM - TIBIA_LENGTH_MM);
 
-namespace Movement {
-    constexpr float STEP_LENGTH_MM = 100.0f;
-    constexpr float STEP_HEIGHT_MM = 60.0f;
-    constexpr float SWING_DURATION_S = 0.250f;
-	constexpr float GAP_DURATION_S = 0.1; // gap between swing
-    
-    constexpr int next_leg_gait[5] = {
-        /* -1 -> */ 0,
-        /*  0 -> */ 2,
-        /*  1 -> */ 3,
-        /*  2 -> */ 1,
-        /*  3 -> */ 0,
-    };
-}
+enum class Gait {
+    WALK,
+    TURN_R,
+    TURN_L
+};
+
+class MovementConfig {
+    public:
+        static constexpr float STEP_LENGTH_MM = 100.0f;
+        static constexpr float STEP_HEIGHT_MM = 60.0f;
+        static constexpr float SWING_DURATION_S = 0.4f;
+        static constexpr float GAP_DURATION_S = 0.1f;
+
+        using LegOrder = Array<int, 4>;
+
+        static constexpr LegOrder ORDER_WALK   = {0, 2, 1, 3};
+        static constexpr LegOrder ORDER_TURN_R = {0, 1, 2, 3};
+        static constexpr LegOrder ORDER_TURN_L = {0, 3, 2, 1};
+
+        // Get the ordered list of swing legs for a movement.
+        static constexpr const LegOrder& getOrder(Gait movement) {
+            switch (movement) {
+                case Gait::WALK:
+                    return ORDER_WALK;
+                case Gait::TURN_R:
+                    return ORDER_TURN_R;
+                case Gait::TURN_L:
+                    return ORDER_TURN_L;
+            }
+
+            return ORDER_WALK;
+        }
+
+        // Get the next leg after the current swing leg.
+        // current_leg = -1 means no leg has swung yet.
+        static constexpr int getNextLeg(Gait movement, int current_leg) {
+            const auto& order = getOrder(movement);
+
+            if (current_leg == -1) {
+                return order[0];
+            }
+
+            for (int i = 0; i < order.size(); ++i) {
+                if (order[i] == current_leg) {
+                    return order[(i + 1) % order.size()];
+                }
+            }
+
+            return order[0];
+        }
+};
 
 namespace Offset {
     // in foot frame

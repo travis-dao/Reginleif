@@ -20,7 +20,7 @@ class Base {
 
 		Base(const Config& cfg);
 		void init(const i2c_master_bus_handle_t bus_);
-		void update(const float dt_s, const ImuData& imu_data);
+		void update(const float dt_s, const ImuCorrection& imu_correction);
 
 	private:
 		float current_speed_mm_s_; // mm/s

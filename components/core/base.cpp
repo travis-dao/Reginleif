@@ -56,9 +56,9 @@ void Base::updateSpeed(const float dt_s) {
 	}
 }
 
-void Base::update(const float dt_s, const ImuData& imu_data) {
-	target_orientation_rad_ = imu_data.angles_rad * RAD_TO_DEG;
+void Base::update(const float dt_s, const ImuCorrection& imu_correction) {
+	target_orientation_rad_ = imu_correction.angles_rad * RAD_TO_DEG;
 	updateSpeed(dt_s);
 	
-	motion_subsystem_.update(dt_s, imu_data);
+	motion_subsystem_.update(dt_s, imu_correction);
 }

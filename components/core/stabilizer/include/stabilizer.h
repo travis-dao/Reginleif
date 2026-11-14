@@ -16,9 +16,9 @@ class Stabilizer {
 
         Stabilizer(const Config& config);
         void init(i2c_master_bus_handle_t bus);
-        void update(const float dt_s, ImuData& out);
+        void update(const float dt_s, ImuCorrection& out);
 
-        Vec3 angles() const { return Vec3 { angles_deg_.roll, -angles_deg_.pitch, 0.0f }; }
+        Vec3 angles() const { return Vec3 { angles_deg_.roll, angles_deg_.pitch, angles_deg_.yaw }; }
         Vec3 gyro()   const { return gyro_dps_; }
 
     private:

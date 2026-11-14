@@ -162,13 +162,13 @@ void Leg::updateSwing(const float dt_s) {
     }
 }
 
-void Leg::update(const float dt_s, Theta3& out_target_angles_deg, const ImuData& imu_data) {
+void Leg::update(const float dt_s, Theta3& out_target_angles_deg, const ImuCorrection& imu_correction) {
 	// update target pos based on state
 	if (state_ == SWING) {
 		updateSwing(dt_s);
 	} else if (state_ == STANCE) {
 		updateStance(dt_s);
-		applyPidCorrection(imu_data);
+		applyPidCorrection(imu_correction);
 	} else if (state_ == PAUSE) {
 		// do nothing
 	} else { // HOLD
@@ -216,6 +216,6 @@ Vec3 Leg::rearFootPos() const {
 Vec3 Leg::currFootPos() const { return foot_state_.curr; }
 
 // --------------- pid ---------------
-void Leg::applyPidCorrection(const ImuData& imu_data) {
-	if (imu_data.valid) foot_state_.target.rotate(imu_data.rot_mat);
+void Leg::applyPidCorrection(const ImuCorrection& imu_correction) {
+	if (imu_correction.valid) foot_state_.target.rotate(imu_correction.rot_mat);
 }

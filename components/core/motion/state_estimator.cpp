@@ -35,7 +35,7 @@ Array<Vec3f, StateEstimator::NL> StateEstimator::footRelBody() const {
     return r;
 }
 
-void StateEstimator::reset(const Vec3f& p0, const Vec3f& v0, const ImuData& imu) {
+void StateEstimator::reset(const Vec3f& p0, const Vec3f& v0, const ImuCorrection& imu) {
     if (!imu.valid) return;
 
     const Vec3f rpy  = toEigen(imu.rpy_rad);
@@ -83,7 +83,7 @@ void StateEstimator::updateContact(float dt) {
 }
 
 // ----------------------------------------------------------------------
-const State& StateEstimator::update(float dt, const ImuData& imu) {
+const State& StateEstimator::update(float dt, const ImuCorrection& imu) {
     if (!imu.valid || dt <= 0.0f) return state_;   // no IMU -> hold last estimate
     if (!initialized_) reset(Vec3f::Zero(), Vec3f::Zero(), imu);
 

@@ -32,7 +32,7 @@ MotionSubsystem::MotionSubsystem(
     mpc_active_ = false;
 }
 // --------------- update ---------------
-void MotionSubsystem::update(const float dt_s, const ImuData& imu) {
+void MotionSubsystem::update(const float dt_s, const ImuCorrection& imu) {
     auto state = estimate(dt_s, imu);
 
     // input
@@ -69,7 +69,7 @@ void MotionSubsystem::update(const float dt_s, const ImuData& imu) {
     leg_controller_.update(dt_s, imu);
 }
 
-const MPCResult* MotionSubsystem::step(const float dt_s, const ImuData& imu) {
+const MPCResult* MotionSubsystem::step(const float dt_s, const ImuCorrection& imu) {
     t_since += dt_s;
     t_engaged_ += dt_s;
 
@@ -127,11 +127,11 @@ void MotionSubsystem::updateMode(const State& s0) {
 
 
 // --------------- state estimator ---------------
-void MotionSubsystem::reset(const Vec3f& p0, const Vec3f& v0, const ImuData& imu) { 
+void MotionSubsystem::reset(const Vec3f& p0, const Vec3f& v0, const ImuCorrection& imu) { 
     state_estimator_.reset(p0, v0, imu);
 }
 
-State MotionSubsystem::estimate(const float dt_s, const ImuData& imu) {
+State MotionSubsystem::estimate(const float dt_s, const ImuCorrection& imu) {
     state_ = state_estimator_.update(dt_s, imu);
     return state_;
 }

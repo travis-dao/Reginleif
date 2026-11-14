@@ -43,7 +43,7 @@ void LegController::init(i2c_master_bus_handle_t bus) {
 }
 
 // --------------- update ---------------
-void LegController::update(float dt_s, const ImuData& imu_data) {
+void LegController::update(float dt_s, const ImuCorrection& imu_correction) {
     updateTwist(dt_s);
 
     // gait sequencing
@@ -80,7 +80,7 @@ void LegController::update(float dt_s, const ImuData& imu_data) {
 
     // leg movement calculations
     for (int i = 0; i < 4; i++) {
-        legs_[i]->update(dt_s, target_angles_[i], imu_data);
+        legs_[i]->update(dt_s, target_angles_[i], imu_correction);
 
         // update servos (burst write)
         target_angles_buffer_[i * 3 + 0] = target_angles_[i].coxa;

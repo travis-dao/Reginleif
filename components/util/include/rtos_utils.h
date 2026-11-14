@@ -31,7 +31,7 @@ class Mailbox {
         QueueHandle_t q_ = nullptr;
 };
 
-struct ImuData {
+struct ImuCorrection {
     int64_t stamp_us = 0;          // set by imu_task before publishing
     Mat3 rot_mat = Mat3::identity();
 

@@ -15,7 +15,7 @@
 //             kinematics (-R (w x r + dr)), and foot height = 0 on flat ground
 //   swing feet get inflated process/measurement noise, so they don't corrupt the estimate.
 //
-// Orientation comes from ImuData::rpy_rad, angular rate from ImuData::gyro_rad_s.
+// Orientation comes from ImuCorrection::rpy_rad, angular rate from ImuCorrection::gyro_rad_s.
 // Contact state comes from the gait: every leg except LegController::swingLeg().
 //
 // Assumes the body frame origin is the CoM (as Core does when it uses s.pos + R * foot_body).
@@ -59,12 +59,12 @@ class StateEstimator {
         StateEstimator(Config cfg, LegController& leg_controller);
 
         // init at known pose (ex. neutral)
-        void reset(const Vec3f& p0, const Vec3f& v0, const ImuData& imu);
+        void reset(const Vec3f& p0, const Vec3f& v0, const ImuCorrection& imu);
 
         // One filter tick. Call every control tick (not only on MPC solve ticks).
         // If imu.valid is false the previous estimate is returned unchanged.
         // If reset() was never called, starts at the world origin.
-        const State& update(float dt_s, const ImuData& imu);
+        const State& update(float dt_s, const ImuCorrection& imu);
 
         const State& state() const { return state_; }
         bool initialized() const { return initialized_; }

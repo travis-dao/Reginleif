@@ -13,7 +13,7 @@
 
 static const char *TAG = "main";
 
-Mailbox<ImuData> imu_data;
+Mailbox<ImuCorrection> imu_correction;
 
 MPC::Config mpc_cfg;
 MotionSubsystem::Config motion_system_cfg;
@@ -34,10 +34,10 @@ static void stabilizer_task(void *arg) {
         // Guard against a bad dt (first iteration, or a long stall)
         if (dt <= 0.0f || dt > 0.05f) dt = 0.005f;
 
-        ImuData out{};
+        ImuCorrection out{};
         stabilizer->update(dt, out);
         out.stamp_us = now_us;
-        imu_data.publish(out);
+        imu_correction.publish(out);
 
         vTaskDelayUntil(&last_wake, period);
     }
@@ -55,8 +55,8 @@ static void gait_task(void *arg) {
         float dt = (now_us - last_us) * 1e-6f;
         last_us = now_us;
 
-        ImuData c{};                                   // identity default
-        if (!imu_data.read(c, 30000)) c = ImuData{};    // stale -> no correction
+        ImuCorrection c{};                                   // identity default
+        if (!imu_correction.read(c, 30000)) c = ImuCorrection{};    // stale -> no correction
 
         base->update(dt, c);
 
@@ -85,7 +85,7 @@ extern "C" void app_main() {
     base_.init(i2c_.handle());
     stabilizer_.init(i2c_.handle());
     
-    imu_data.init();
+    imu_correction.init();
 
     xTaskCreatePinnedToCore(stabilizer_task, "imu", 4096, &stabilizer_, 6, nullptr, 1);
     xTaskCreatePinnedToCore(gait_task, "gait", 4096, &base_, 5, nullptr, 0);

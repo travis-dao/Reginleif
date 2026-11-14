@@ -48,12 +48,12 @@ class MotionSubsystem {
             const StateEstimator::Config& state_estimator_cfg, 
             LegController& leg_controller_cfg
         );
-        const MPCResult* step(const float dt_s, const ImuData& imu);
-        void update(const float dt_s, const ImuData& imu);
+        const MPCResult* step(const float dt_s, const ImuCorrection& imu);
+        void update(const float dt_s, const ImuCorrection& imu);
 
         // init the estimator at a known pose (neutral)
-        void reset(const Vec3f& p0, const Vec3f& v0, const ImuData& imu);
-        State estimate(const float dt_s, const ImuData& imu);
+        void reset(const Vec3f& p0, const Vec3f& v0, const ImuCorrection& imu);
+        State estimate(const float dt_s, const ImuCorrection& imu);
     
     private:
         Vector<StateVec> reference(const State& s0) const;

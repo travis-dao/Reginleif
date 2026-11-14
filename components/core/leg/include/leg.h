@@ -38,7 +38,7 @@ class Leg {
 
 		Leg(const Config& cfg);
 
-		void update(const float dt_s, Theta3& out_target_angles_deg, const ImuData& imu_data);
+		void update(const float dt_s, Theta3& out_target_angles_deg, const ImuCorrection& imu_correction);
 		void startSwing(const Vec3& target_pos_lf);
 		void startStance(const Vec3& target_pos_lf);
 
@@ -55,7 +55,7 @@ class Leg {
 		void resumeStance();
 		void hold();
 
-		void applyPidCorrection(const ImuData& imu_data);
+		void applyPidCorrection(const ImuCorrection& imu_correction);
 
 	private:
 		void moveLeg();

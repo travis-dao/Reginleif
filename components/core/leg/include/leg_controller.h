@@ -43,7 +43,7 @@ class LegController {
 
         LegController();
 
-        void update(const float dt_s, const ImuData& imu_data);
+        void update(const float dt_s, const ImuCorrection& imu_correction);
         void init(i2c_master_bus_handle_t bus);
         
         bool grounded() const;

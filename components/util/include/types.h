@@ -68,7 +68,4 @@ struct Vec3 {
 
 float dis(const float a, const float b);
 
-template <typename Tp>
-using Optional = std::optional<Tp>;
-
 #endif

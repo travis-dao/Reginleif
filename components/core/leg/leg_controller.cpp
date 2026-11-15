@@ -4,8 +4,7 @@
 #include "servo.h"
 #include "frame.h"
 #include "types.h"
-#include <algorithm>
-#include <cmath>
+#include <optional>
 
 const float NUM_SERVOS = 12;
 
@@ -22,6 +21,7 @@ LegController::LegController() {
     gap_remaining_s = 0.0f;
     state_ = MoveState::IDLE;
     gait_ = Gait::WALK;
+    pick_overdue_ = false;
 }
 
 void LegController::init(i2c_master_bus_handle_t bus) {
@@ -59,7 +59,11 @@ void LegController::update(float dt_s, const ImuCorrection& imu_correction) {
     if (all_grounded && !grounded_) {
         swing_leg_ = -1;
         gap_remaining_s = MovementConfig::GAP_DURATION_S;
-        gait_ = updateGaitOrder();
+        Gait new_gait = updateGaitOrder();
+        if (new_gait != gait_) {
+            gait_ = new_gait;
+            pick_overdue_ = last_swing_leg_ >= 0;
+        }
     }
     grounded_ = all_grounded;
 
@@ -68,7 +72,8 @@ void LegController::update(float dt_s, const ImuCorrection& imu_correction) {
         gap_remaining_s -= dt_s;
         if (gap_remaining_s <= 0.0f) { // stance gap done -> start next swing
             if (state_ == MoveState::WALKING) {
-                int next = MovementConfig::getNextLeg(gait_, swing_leg_);
+                int next = nextSwingLeg();
+                pick_overdue_ = false;
                 last_swing_leg_ = next;
                 swing_leg_ = next;
                 legs_[next]->startSwing(legs_[next]->nominalLandingPos());
@@ -164,13 +169,40 @@ void LegController::setBodyCommand(const float v_mm_s, const float w_rad_s) { tw
 
 // --------------- getters ---------------
 bool LegController::grounded() const { return grounded_; }
+
 bool LegController::idle() const { return state_ == MoveState::IDLE; }
+
 int LegController::swingLeg() const { return swing_leg_; }
+
+int LegController::nextSwingLeg() const {
+    if (pick_overdue_) return mostOverdueLeg();
+    return MovementConfig::getNextLeg(gait_, last_swing_leg_);
+}
+
+int LegController::mostOverdueLeg() const {
+    int best = -1;
+    int best_dist = -1.0;
+
+    for (int i = 0; i < 4; i++) {
+        Vec3 cur = legs_[i]->currFootPos();
+        Vec3 target = legs_[i]->nominalLandingPos();
+        float dist = std::hypotf(target.x - cur.x, target.y - cur.y);
+        if (dist > best_dist) {
+            best = i;
+            best_dist = dist;
+        }
+    }
+
+    return best;
+}
+
 GaitConfig LegController::gaitConfig() const { return gait_cfg_; }
+
 float LegController::swingTimeRemainingS() const {
     if (swing_leg_ < 0) return 0.0f;
     else return legs_[swing_leg_]->swingTimeRemainingS();
 }
+
 Twist LegController::bodyTwist() const { return twist_.curr; }
 
 
@@ -213,10 +245,12 @@ SwingSchedule LegController::swingSchedule(float horizon_s) const {
     if (state_ == MoveState::STOPPING) return out;
 
     int last = last_swing_leg_;
+    std::optional<int> first = pick_overdue_ ? std::optional<int>{mostOverdueLeg()} : std::nullopt;
 
     // predict future swings
     while (t_next < horizon_s) {
-        last = MovementConfig::getNextLeg(gait_, last_swing_leg_);
+        last = first.has_value() ? *first : MovementConfig::getNextLeg(gait_, last_swing_leg_);
+        first = std::nullopt;
 
         out.emplace_back(last, t_next, t_next + T);
 

@@ -33,7 +33,7 @@ class MotionSubsystem {
             size_t horizon = 10;
 
             float z_des_m = 0.0f;
-            Optional<float> yaw_des = std::nullopt;
+            std::optional<float> yaw_des = std::nullopt;
             float yaw_leash_rad = 0.3f;
 
             float solve_period_s = 0.03f;
@@ -74,11 +74,11 @@ class MotionSubsystem {
         bool mpc_active_;
         float t_engaged_ = 0.0f;
         float t_since = 1e-9f;
-        Optional<Eigen::Vector2f> hold_xy_ = std::nullopt;
+        std::optional<Eigen::Vector2f> hold_xy_ = std::nullopt;
         float yaw_des_;
 
         Array<Vec3, 4> offsets_;
-        Optional<MPCResult> lastResult_;
+        std::optional<MPCResult> lastResult_;
 };
 
 #endif

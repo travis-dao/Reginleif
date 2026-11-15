@@ -49,6 +49,7 @@ class LegController {
         bool grounded() const;
         bool idle() const;
 		int swingLeg() const;
+        int nextSwingLeg() const;
         GaitConfig gaitConfig() const;
 
         float swingTimeRemainingS() const;
@@ -72,6 +73,7 @@ class LegController {
 
         void updateTwist(const float dt_s);
         Gait updateGaitOrder();
+        int mostOverdueLeg() const;
 
         Twist limit(Twist twist) const;
 
@@ -92,6 +94,7 @@ class LegController {
         int last_swing_leg_;
         float gap_remaining_s;
         bool grounded_;
+        bool pick_overdue_;
 };
 
 #endif

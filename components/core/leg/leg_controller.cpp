@@ -150,7 +150,7 @@ void LegController::updateTwist(const float dt_s) {
         Vec3 pos = nominal_leg_pos_bf_[i];
 
         Vec3 vel = Vec3{-(curr.v - curr.w * pos.y), -(curr.w * pos.x), 0.0f}; // foot vel during stance
-        Vec3 step = Vec3{-(geom.v - geom.w * pos.y) * T, -(geom.w * pos.x) * T, 0.0f}; // total foot displacement during stance
+        Vec3 step = Vec3{(geom.v - geom.w * pos.y) * T, (geom.w * pos.x) * T, 0.0f}; // total foot displacement during stance
 
         legs_[i]->setStance(vel, step);
     }

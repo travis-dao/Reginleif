@@ -1,15 +1,13 @@
 file(GLOB_RECURSE QP_SRCS
-    c/src/*.c
-    c/solver_code/*.c
+    c/*.c
 )
 
 idf_component_register(
     SRCS ${QP_SRCS}
     INCLUDE_DIRS
-        c/include
-        c/solver_code
-        c/solver_code/inc/public
-        c/solver_code/inc/private
+        c/
+        c/inc/public
+        c/inc/private
     PRIV_INCLUDE_DIRS
 )
 

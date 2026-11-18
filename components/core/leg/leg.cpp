@@ -1,170 +1,261 @@
 #include "leg.h"
+#include "leg_config.h"
 #include "leg_controller.h"
 #include "servo.h"
 #include "types.h"
 #include "ik.h"
+#include <cmath>
 
-static bool isRightLeg(const int id) {
-	return id == 1 || id == 2;
+// --------------- helpers ---------------
+Theta3 clampToLimits(const Theta3& angles_deg, const int leg_idx) {
+	const LegServoLimits& lim = ServoConfig::limits[leg_idx];
+
+	return Theta3 {
+		lim.coxa.clamp(angles_deg.coxa),
+		lim.femur.clamp(angles_deg.femur),
+		lim.tibia.clamp(angles_deg.tibia)
+	};
 }
-static bool isFrontLeg(const int id) {
-	return id == 0 || id == 1;
+
+bool outsideServoLimits(const Theta3& angles_deg, const int leg_idx) {
+	const LegServoLimits& lim = ServoConfig::limits[leg_idx];
+
+	if (angles_deg.coxa > lim.coxa.max_deg || angles_deg.coxa < lim.coxa.min_deg) return false;
+	if (angles_deg.femur > lim.femur.max_deg || angles_deg.femur < lim.femur.min_deg) return false;
+	if (angles_deg.tibia > lim.tibia.max_deg || angles_deg.tibia < lim.tibia.min_deg) return false;
+	
+	return true;
 }
 
+static bool isRightLeg(const int id) { return id == 1 || id == 2; }
+static bool isFrontLeg(const int id) { return id == 0 || id == 1; }
 
-Leg::Leg(const Config& cfg):
-	pca(cfg.pca)
-{
+// cubic Hermite in xy whose end velocities equal the stance sweep
+// # t in [0,1], velocities in mm/s
+float hermite(const float p0, const float p1, const float v0, const float v1, const float T, const float t) {
+    float t2 = t*t; float t3 = t*t*t;
+    float h00 = 2*t3 - 3*t2 + 1; float h10 = t3 - 2*t2 + t;
+    float h01 = -2*t3 + 3*t2; float h11 = t3 - t2;
+    return h00*p0 + h10*T*v0 + h01*p1 + h11*T*v1;
+}
+
+// --------------- init ---------------
+Leg::Leg(const Config& cfg) {
 	Vec3 neutral_foot_pos_lf = Offset::neutral_foot_pos_lf[cfg.id];
 
-	this->id = cfg.id;
-	this->pos_state = {
-		.foot_curr_pos_lf = neutral_foot_pos_lf,
-		.foot_target_pos_lf = neutral_foot_pos_lf,
+	id_ = cfg.id;
+	foot_state_ = {
+		.curr = neutral_foot_pos_lf,
+		.target = neutral_foot_pos_lf,
 
-		.swing_start_pos_lf = neutral_foot_pos_lf,
-		.swing_target_pos_lf = neutral_foot_pos_lf,
+		.swing_start = neutral_foot_pos_lf,
+		.swing_target = neutral_foot_pos_lf,
 
-		.stance_start_pos_lf = neutral_foot_pos_lf,
-		.stance_target_pos_lf = neutral_foot_pos_lf
+		.stance_start = neutral_foot_pos_lf,
+		.stance_target = neutral_foot_pos_lf,
+
+		.offset = Vec3{0.0f, 0.0f, 0.0f},
+		.offset_cmd = Vec3{0.0f, 0.0f, 0.0f},
 	};
 
-	this->swing_phase = 0.0f;
-	this->stance_phase = 0.0f;
-	this->leg_state = HOLD;
+	swing_phase_ = 0.0f;
+	stance_phase_ = 0.0f;
+	state_ = NEUTRAL;
+
+	tilt_R_T_ = Mat3::identity();
 
 	moveLeg();
 }
 
+
+// --------------- movement ---------------
 void Leg::moveLeg() {
 	// flip y pos
-	Vec3 adjusted_target_pos_lf = this->pos_state.foot_target_pos_lf;
-	adjusted_target_pos_lf.y *= isRightLeg(id) ? -1.0f : 1.0f;
+	Vec3 target = foot_state_.target;
+	target.y *= isRightLeg(id_) ? -1.0f : 1.0f;
 
 	Theta3 target_angles_deg;
 
 	bool reachable = IK({
 		.body_coxa_x_mm = BODY_COXA_X_MM,
-		.body_coxa_z_mm = BODY_COXA_Z_MM,
 		.femur_length_mm = FEMUR_LENGTH_MM,
 		.tibia_length_mm = TIBIA_LENGTH_MM,
 		.c_min = c_min,
 		.c_max = c_max
-	}, adjusted_target_pos_lf, target_angles_deg);
+	}, target, target_angles_deg);
 
 	if (reachable) {
 		// flip angles for reverse mounted servos (leg side)
-		if (!isRightLeg(id)) {
+		if (!isRightLeg(id_)) {
 			target_angles_deg = invertAngles(target_angles_deg);
 		}
 
 		// clamp servos to calibrated limits
-		target_angles_deg = clampToLimits(target_angles_deg, this->id);
+		target_angles_deg = clampToLimits(target_angles_deg, id_);
 		
-		// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", this->id, target_angles.coxa, target_angles.femur, target_angles.tibia);
+		// printf("Leg %d |	coxa: %f, femur: %f, tibia %f\n", id_, target_angles.coxa, target_angles.femur, target_angles.tibia);
 
 		// update members
-		this->servo_angles_deg = target_angles_deg;
+		angles = target_angles_deg;
 	}
 }
 
+
+// --------------- commands ---------------
 void Leg::startSwing(const Vec3& target_pos_lf) {
-    this->pos_state.swing_start_pos_lf = this->pos_state.foot_target_pos_lf;
-    this->pos_state.swing_target_pos_lf = target_pos_lf;
-    this->swing_phase = 0.0f;
+    foot_state_.swing_start = foot_state_.target;
+    foot_state_.swing_target = target_pos_lf;
+    swing_phase_ = 0.0f;
     setState(SWING);
 }
 
 void Leg::startStance(const Vec3& target_pos_lf) {
-    this->pos_state.stance_start_pos_lf = this->pos_state.foot_target_pos_lf;
-    this->pos_state.stance_target_pos_lf = target_pos_lf;
-    this->stance_phase = 0.0f;
+    foot_state_.stance_start = foot_state_.target;
+    foot_state_.stance_target = target_pos_lf;
+    stance_phase_ = 0.0f;
     setState(STANCE);
 }
 
+void Leg::hold() {
+	if (state_ == SWING) return;
+	setState(PAUSE);
+}
+
+void Leg::resumeStance() {
+	startStance(rearFootPos());
+}
+
+
+// --------------- update ---------------
 void Leg::updateStance(const float dt_s) {
-	this->stance_phase += dt_s / (Movement::SWING_DURATION_S * 3.0f);
+	Vec3 start = foot_state_.stance_start;
+	Vec3 foot = foot_state_.stance_target;
+	Vec3 rear = rearFootPos();
 
-    if (this->stance_phase > 1.0f) {
-        this->stance_phase = 1.0f;
-    }
+	// continue sweeping while rear limit is ahead of foot
+	if ((rear.x - foot.x) * vel_state_.stance_vel.x + (rear.x - foot.x) * vel_state_.stance_vel.y > 0.0f) {
+		foot.x += vel_state_.stance_vel.x * dt_s;
+		foot.y += vel_state_.stance_vel.y * dt_s;
+	}
 
-    const float t = this->stance_phase;
-
-    const Vec3& start = this->pos_state.stance_start_pos_lf;
-    const Vec3& target = this->pos_state.stance_target_pos_lf;
-
-    // smooth horizontal interpolation
-    const float alpha = t * t * (3.0f - 2.0f * t);
-
-	this->pos_state.foot_target_pos_lf = start + (target - start) * alpha;
-
-    if (t >= 1.0f) {
-        // ensure the final target is exact
-        this->pos_state.foot_target_pos_lf = target;
-    }
+	float span = rear.dis(start);
+	float done = foot.dis(start);
+	stance_phase_ = (span < EPSILON) ? (1.0f) : fminf(done / span, 1.0f);
 }
 
 void Leg::updateSwing(const float dt_s) {
     // advance and clamp swing progress
-    this->swing_phase += dt_s / Movement::SWING_DURATION_S;
+    swing_phase_ += dt_s / MovementConfig::SWING_DURATION_S;
 
-    if (this->swing_phase > 1.0f) {
-        this->swing_phase = 1.0f;
+    if (swing_phase_ > 1.0f) {
+        swing_phase_ = 1.0f;
     }
 
-    const float t = this->swing_phase;
+    const float t = swing_phase_;
 
-    const Vec3& start = this->pos_state.swing_start_pos_lf;
-    const Vec3& target = this->pos_state.swing_target_pos_lf;
+    const Vec3& start = foot_state_.swing_start;
+    const Vec3& target = foot_state_.swing_target;
+	const Vec3& sv = vel_state_.stance_vel;
 
-    // smooth horizontal interpolation
-    const float alpha = t * t * (3.0f - 2.0f * t);
-
-    this->pos_state.foot_target_pos_lf.x = start.x + alpha * (target.x - start.x);
-    this->pos_state.foot_target_pos_lf.y = start.y + alpha * (target.y - start.y);
-
+    foot_state_.target.x = hermite(start.x, target.x, sv.x, sv.x, MovementConfig::SWING_DURATION_S, t);
+    foot_state_.target.y = hermite(start.y, target.y, sv.y, sv.y, MovementConfig::SWING_DURATION_S, t);
     // lift the foot above the start-to-target line
-    const float clearance = Movement::STEP_HEIGHT_MM * sinf(PI * t);
-    this->pos_state.foot_target_pos_lf.z = (start.z + t * (target.z - start.z)) + clearance;
+
+    float clearance;
+	// Asymmetric lift: fast ascent, gentle descent
+
+	if (t < MovementConfig::LIFT_FRACTION) {
+		// Fast lift: ease out toward maximum height
+		float u = t / MovementConfig::LIFT_FRACTION;
+		clearance = MovementConfig::STEP_HEIGHT_MM * (1.0 - powf((1.0 - u), 2));
+	} else {
+		// Gentle descent: ease in toward ground level
+		float u = (t - MovementConfig::LIFT_FRACTION) / (1.0 - MovementConfig::LIFT_FRACTION);
+		clearance = MovementConfig::STEP_HEIGHT_MM * (1.0 - powf(u, 2));
+	}
+		
+    foot_state_.target.z = (start.z + t * (target.z - start.z)) + clearance;
 
     if (t >= 1.0f) {
-        // ensure the final target is exact
-        this->pos_state.foot_target_pos_lf = target;
-		Vec3 foot_end_target_lf = this->pos_state.swing_start_pos_lf;
-		foot_end_target_lf.x = Offset::neutral_foot_pos_lf[this->id].x - Movement::STEP_LENGTH_MM / 2.0f;
-		startStance(foot_end_target_lf);
+		foot_state_.target = target;
+		startStance(rearFootPos());
     }
 }
 
-void Leg::update(const float dt_s, Theta3& out_target_angles_deg, const ImuData& imu_data) {
+void Leg::update(const float dt_s, Theta3& out_target_angles_deg, const ImuCorrection& imu_correction) {
 	// update target pos based on state
-	if (this->leg_state == SWING) {
+	if (state_ == SWING) {
 		updateSwing(dt_s);
-	} else if (this->leg_state == STANCE) {
+	} else if (state_ == STANCE) {
 		updateStance(dt_s);
-		pidCorrection(imu_data);
-	} else {
-		this->pos_state.foot_target_pos_lf = Offset::neutral_foot_pos_lf[this->id]; // TODO: CHANGE LATER
+		applyPidCorrection(imu_correction);
+	} else if (state_ == PAUSE) {
+		// do nothing
+	} else { // HOLD
+		foot_state_.target = Offset::neutral_foot_pos_lf[id_]; // TODO: CHANGE LATER
 	}
 
-	// IK stuff
+	// update mpc offset calc
+	Vec3 offset_cmd = state_ == SWING ? Vec3 {0.0f, 0.0f, 0.0f} : foot_state_.offset_cmd;
+	float alpha = 1.0 - exp(-dt_s / MPC_OFFSET_TAU_S);
+	foot_state_.offset += (offset_cmd - foot_state_.offset) * alpha;
+
+	Vec3 pos_ik = foot_state_.target;
+
+	Vec3 base = Offset::leg_base_pos_bf[id_];
+	Vec3 pos_bf = base + pos_ik;
+	pos_bf.rotate(tilt_R_T_);
+	pos_ik = pos_bf - base;
+
 	moveLeg();
 
 	// update variables
-	this->pos_state.foot_curr_pos_lf = this->pos_state.foot_target_pos_lf;
-	out_target_angles_deg = this->servo_angles_deg;
+	foot_state_.curr = pos_ik + foot_state_.offset;
+	out_target_angles_deg = angles;
 }
 
-Vec3 Leg::getNominalLandingPos() const {
-	Vec3 foot_end_target_lf = this->pos_state.swing_start_pos_lf;
-	foot_end_target_lf.x = Offset::neutral_foot_pos_lf[this->id].x + Movement::STEP_LENGTH_MM / 2.0f;
 
-	return foot_end_target_lf;
+// --------------- setters ---------------
+void Leg::setMpcOffset(const Vec3& offset_lf) { foot_state_.offset_cmd = offset_lf; }
+
+void Leg::setStance(const Vec3& vel, const Vec3& step) { vel_state_.stance_vel = vel; vel_state_.step_vec = step; }
+
+void Leg::setState(const LegState state) { state_ = state; }
+
+void Leg::setBodyTilt(const Mat3& R_T) { tilt_R_T_ = R_T; }
+
+// --------------- getters ---------------
+bool Leg::grounded() const { return state_ != SWING; }
+
+float Leg::swingTimeRemainingS() const {
+	if (state_ == LegState::SWING) return 0.0f;
+	else return (1.0f - swing_phase_) * MovementConfig::SWING_DURATION_S;
 }
 
-void Leg::pidCorrection(const ImuData& imu_data) {
-	if (imu_data.valid) {
-		this->pos_state.foot_target_pos_lf.rotate(imu_data.rot_mat);
-	}
+Vec3 Leg::nominalLandingPos(const Vec3& vel_act, const Vec3& vel_cmd, const float h_mm, const float k) const {
+	Vec3 target = Offset::neutral_foot_pos_lf[id_];
+	target.x += vel_state_.step_vec.x / 2.0f;
+	target.y += vel_state_.step_vec.y / 2.0f;
+
+	float omega = std::sqrt(9.81f * 1e3f / h_mm);
+
+	target.x -= k * (vel_act.x - vel_cmd.x) / omega;
+	target.y -= k * (vel_act.y - vel_cmd.y) / omega;
+
+	return target;
+}
+
+Vec3 Leg::rearFootPos() const {
+	Vec3 rear = Offset::neutral_foot_pos_lf[id_];
+	rear.x -= vel_state_.step_vec.x / 2.0f;
+	rear.y -= vel_state_.step_vec.y / 2.0f;
+
+	return rear;
+}
+
+Vec3 Leg::currFootPos() const { return foot_state_.curr; }
+
+// --------------- pid ---------------
+void Leg::applyPidCorrection(const ImuCorrection& imu_correction) {
+	if (imu_correction.valid) foot_state_.target.rotate(imu_correction.rot_mat);
 }

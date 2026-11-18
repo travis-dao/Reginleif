@@ -1,4 +1,6 @@
 #include "types.h"
+#include <stdio.h>
+#include <algorithm>
 
 #pragma region Vec3
 

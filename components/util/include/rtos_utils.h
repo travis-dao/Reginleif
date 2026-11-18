@@ -31,16 +31,16 @@ class Mailbox {
         QueueHandle_t q_ = nullptr;
 };
 
-struct ImuData {
+struct ImuCorrection {
     int64_t stamp_us = 0;          // set by imu_task before publishing
     Mat3 rot_mat = Mat3::identity();
 
-    // IMU, written by IMUWrapper
+    // Imu, written by ImuWrapper
     Vec3 angles_rad { 0.0f, 0.0f, 0.0f};
     Vec3 rpy_rad  {0.0f, 0.0f, 0.0f};  // RADIANS, body orientation in the world
     Vec3 gyro_rad_s {0.0f, 0.0f, 0.0f};  // rad/s, body frame, gyro bias removed
     bool valid = false;            // false in a default SharedData{}: gait_task passes
-                                   // that when the mailbox is stale, so Base sees "no IMU"
+                                   // that when the mailbox is stale, so Base sees "no Imu"
 };
 
 #endif

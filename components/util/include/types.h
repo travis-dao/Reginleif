@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <math.h>
 #include <array>
-#include <Eigen/Dense>
+#include <optional>
 
 constexpr float RAD_TO_DEG = 57.2957795131f;
 constexpr float DEG_TO_RAD = 0.01745329252f;
@@ -18,6 +18,9 @@ struct Theta3 {
 
 template <typename T, std::size_t N>
 using Array = std::array<T, N>;
+
+template <typename T1, typename T2, typename T3>
+using Triple = std::tuple<T1, T2, T3>;
 
 struct Mat3 {
     Array<Array<float, 3>, 3> data{};
@@ -38,6 +41,16 @@ struct Mat3 {
                 {0.0f, 0.0f, 1.0f}
             }
         }};
+    }
+
+	constexpr Mat3 transpose() const {
+		Mat3 result{};
+		for (size_t i = 0; i < 3; ++i) {
+			for (size_t j = 0; j < 3; ++j) {
+				result[i][j] = data[j][i];
+			}
+		}
+		return result;
     }
 };
 

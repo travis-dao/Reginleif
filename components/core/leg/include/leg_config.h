@@ -3,35 +3,77 @@
 
 #include "types.h"
 
-constexpr float FEMUR_LENGTH_MM = 122.64f;
-constexpr float TIBIA_LENGTH_MM = 34.66f + 147.03f;
-constexpr float BODY_COXA_X_MM = 28.58f;
-constexpr float BODY_COXA_Z_MM = 0.0f;
+constexpr float FEMUR_LENGTH_MM = 122.0f;
+constexpr float TIBIA_LENGTH_MM = 160.0f;
+constexpr float BODY_COXA_X_MM = 15.0f;
 
 const float c_max = FEMUR_LENGTH_MM + TIBIA_LENGTH_MM;
 const float c_min = fabsf(FEMUR_LENGTH_MM - TIBIA_LENGTH_MM);
 
-namespace Movement {
-    constexpr float STEP_LENGTH_MM = 150.0f;
-    constexpr float STEP_HEIGHT_MM = 100.0f;
-    constexpr float SWING_DURATION_S = 0.250f;
-    
-    constexpr int next_leg_gait[5] = {
-        /* -1 -> */ 0,
-        /*  0 -> */ 2,
-        /*  1 -> */ 3,
-        /*  2 -> */ 1,
-        /*  3 -> */ 0,
-    };
-}
+enum class Gait {
+    WALK_F,
+    WALK_B,
+    TURN_R,
+    TURN_L
+};
+
+class MovementConfig {
+    public:
+        static constexpr float STEP_LENGTH_MM = 100.0f;
+        static constexpr float STEP_HEIGHT_MM = 60.0f;
+        static constexpr float SWING_DURATION_S = 0.4f;
+        static constexpr float GAP_DURATION_S = SWING_DURATION_S / 4.0f;
+        static constexpr float LIFT_FRACTION = 0.4f;
+
+        using LegOrder = Array<int, 4>;
+
+        static constexpr LegOrder ORDER_WALK_F = {0, 2, 1, 3};
+        static constexpr LegOrder ORDER_WALK_B = {2, 0, 3, 1};
+        static constexpr LegOrder ORDER_TURN_R = {1, 2, 3, 0};
+        static constexpr LegOrder ORDER_TURN_L = {0, 3, 2, 1};
+
+        // Get the ordered list of swing legs for a movement.
+        static constexpr const LegOrder& getOrder(Gait movement) {
+            switch (movement) {
+                case Gait::WALK_F:
+                    return ORDER_WALK_F;
+                case Gait::WALK_B:
+                    return ORDER_WALK_B;
+                case Gait::TURN_R:
+                    return ORDER_TURN_R;
+                case Gait::TURN_L:
+                    return ORDER_TURN_L;
+            }
+
+            return ORDER_WALK_F;
+        }
+
+        // Get the next leg after the current swing leg.
+        // current_leg = -1 means no leg has swung yet.
+        static constexpr int getNextLeg(Gait movement, int current_leg) {
+            const auto& order = getOrder(movement);
+
+            if (current_leg == -1) {
+                return order[0];
+            }
+
+            for (int i = 0; i < order.size(); ++i) {
+                if (order[i] == current_leg) {
+                    return order[(i + 1) % order.size()];
+                }
+            }
+
+            return order[0];
+        }
+};
 
 namespace Offset {
     // in foot frame
     // (0, 0, 0) = hip of foot
-    constexpr Vec3 foot_neutral_offset_mag = { 150.0f, 150.0f, 0.0f };
+    constexpr Vec3 foot_neutral_offset_mag = { 120.0f, 100.0f, -40.0f };
     // from body frame
     // (0, 0, 0) = center of body
-    constexpr Vec3 leg_base_offset_mag = { 33.72f, 43.13f, -20.0f };
+    constexpr Vec3 leg_base_offset_mag = { 34.0f, 43.5f, 0.0f };
 
     // Per-leg sign for each axis (FL, FR, BR, BL)
     constexpr Array<Vec3, 4> quadrant_sign = {{

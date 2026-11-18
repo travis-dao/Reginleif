@@ -1,21 +1,22 @@
 #include "mpc.h"
+#include "eigen.h"
 #include "esp_timer.h"
 
 MPC::MPC(const Config& cfg) : 
     cfg_(cfg)
 {
-    this->N = cfg_.horizon;
+    N_ = cfg_.horizon;
 
-    models_.resize(N);
+    models_.resize(N_);
 
-    A_qp_.setZero(NX * N, NX);
-    B_qp_.setZero(NX * N, NU * N);   // upper triangle stays zero forever
-    H_.setZero(NU * N, NU * N);
-    q_.setZero(NU * N);
+    A_qp_.setZero(NX * N_, NX);
+    B_qp_.setZero(NX * N_, NU * N_);   // upper triangle stays zero forever
+    H_.setZero(NU * N_, NU * N_);
+    q_.setZero(NU * N_);
 
-    C_.setZero(CONSTRAINTS_PER_FOOT * NUM_LEGS * N, NU * N);
-    lb_.setZero(CONSTRAINTS_PER_FOOT * NUM_LEGS * N);
-    ub_.setZero(CONSTRAINTS_PER_FOOT * NUM_LEGS * N);
+    C_.setZero(CONSTRAINTS_PER_FOOT * NUM_LEGS * N_, NU * N_);
+    lb_.setZero(CONSTRAINTS_PER_FOOT * NUM_LEGS * N_);
+    ub_.setZero(CONSTRAINTS_PER_FOOT * NUM_LEGS * N_);
 
     const float mu = cfg_.mu;
     Eigen::Matrix<float, CONSTRAINTS_PER_FOOT, 3> C_foot;
@@ -26,12 +27,12 @@ MPC::MPC(const Config& cfg) :
                0,  0,  1;
 
     // Tile it along the diagonal: one block per (step, foot)
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N_; i++) {
         for (int j = 0; j < NUM_LEGS; j++) {
             const int row = CONSTRAINTS_PER_FOOT * (NUM_LEGS * i + j);
             const int col = NU * i + 3 * j;   // foot j's (fx, fy, fz) in U
             C_.block(row, col, CONSTRAINTS_PER_FOOT, 3) = C_foot;
-            for (int r = 0; r < PYRAMID_ROWS; ++r) {
+            for (int r = 0; r < PYRAMID_ROWS; r++) {
                 lb_(row + r) = -INF;
                 ub_(row + r) = 0.0f;
             }
@@ -39,15 +40,22 @@ MPC::MPC(const Config& cfg) :
     }
 
     // constant weights, so fill once here too
-    L_diag_.resize(NX * N);
-    for (int i = 0; i < N; i++) {
+    L_diag_.resize(NX * N_);
+    for (int i = 0; i < N_; i++) {
         L_diag_.segment(NX * i, NX) = cfg_.Q_diag;
     }
-    K_diag_ = VecX::Constant(NU * N, cfg_.R_weight);
+    K_diag_ = VecXf::Constant(NU * N_, cfg_.R_weight);
+    D_ = MatXf::Identity(NU * N_, NU * N_);
+    for (int i = NU; i < NU * N_; i++) {
+        D_(i, i- NU) = -1.0f;
+    }
+
+    DtWD_ = cfg_.W_weight * D_.transpose() * D_;
+    DtW_ = cfg_.W_weight * D_.transpose();
 
     // init QP solution matricies
-    U_sol_.setZero(NU * N);
-    U_prev_.setZero(NU * N);
+    U_sol_.setZero(NU * N_);
+    U_prev_.setZero(NU * N_);
 }
 
 void MPC::buildDiscreteModels(const MPCProblem& problem) {
@@ -64,7 +72,7 @@ void MPC::buildDiscreteModels(const MPCProblem& problem) {
 }
 
 void MPC::buildCondensedDynamics() {
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N_; i++) {
         if (i == 0) {
             A_qp_.block(0, 0, NX, NX) = models_[i].Ad;
         } else {
@@ -82,24 +90,30 @@ void MPC::buildCondensedDynamics() {
 void MPC::buildCost(const MPCProblem& problem) {
     const StateVec x0 = problem.x0.toVector();
 
-    VecX Y(NX * N);
+    VecXf Y(NX * N_);
 
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N_; i++) {
         Y.segment(NX * i, NX) = problem.x_ref[i];
     }
 
-    VecX error = A_qp_ * x0 - Y;
+    VecXf error = A_qp_ * x0 - Y;
     
     // linear term
-    q_ = 2 * B_qp_.transpose() * L_diag_.asDiagonal() * error;
+    q_ = 2.0f * B_qp_.transpose() * L_diag_.asDiagonal() * error;
 
     // quadratic term
-    H_ = 2 * (B_qp_.transpose() * L_diag_.asDiagonal() * B_qp_);
+    H_ = 2.0f * (B_qp_.transpose() * L_diag_.asDiagonal() * B_qp_);
     H_.diagonal() += 2 * K_diag_;
+
+    VecXf d0 = VecXf::Zero(NU * N_); // last applied force
+    d0.head(NU) = U_prev_.head(NU);
+
+    H_ += 2.0f * DtWD_;
+    q_ += 2.0f * DtW_ * d0;
 }
 
 void MPC::buildConstraints(const MPCProblem& problem) {
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N_; i++) {
         for (int j = 0; j < NUM_LEGS; j++) {
             const int row = CONSTRAINTS_PER_FOOT * (NUM_LEGS * i + j);
 
@@ -115,51 +129,64 @@ void MPC::buildConstraints(const MPCProblem& problem) {
     }
 }
 
-VecX MPC::shift(const VecX& U) const {
-    VecX out(NU * N);
-    out.head(NU * (N - 1)) = U.tail(NU * (N - 1));  // u1..uN-1 move to slots 0..N-2
+VecXf MPC::shift(const VecXf& U) const {
+    VecXf out(NU * N_);
+    out.head(NU * (N_ - 1)) = U.tail(NU * (N_ - 1));  // u1..uN-1 move to slots 0..N-2
     out.tail(NU) = U.tail(NU);                      // last slot repeats uN-1
     return out;
 }
 
 extern "C" {
-    #include "cpg_workspace.h"
-    #include "cpg_solve.h"
+#include "osqp.h"
+#include "workspace.h"
 }
+
 #include <cstring>
 
-bool MPC::solveQP(const MPCProblem& problem, VecX& U_out) {
-    // err = A_qp * x0 - Y (same as in builtCost)
-    VecX Y(NX * N);
-    for (int i = 0; i < N; i++) {
+bool MPC::solveQP(const MPCProblem& problem, VecXf& U_out) {
+    // err = A_qp * x0 - Y
+    VecXf Y(NX * N_);
+    for (int i = 0; i < N_; ++i) {
         Y.segment(NX * i, NX) = problem.x_ref[i];
     }
-    const VecX err = A_qp_ * problem.x0.toVector() - Y;
 
-    // parameters
-    for (int k = 0; k < B_qp_.size(); k++) {
-        mpc_cpg_update_B_qp(k, B_qp_.data()[k]);
-    }
-    for (int k = 0; k < err.size(); k++) {
-        mpc_cpg_update_err(k, err(k));
-    }
+    const VecXf err = A_qp_ * problem.x0.toVector() - Y;
 
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < NUM_LEGS; j++) {
-            const int r = CONSTRAINTS_PER_FOOT * (NUM_LEGS * i + j) + PYRAMID_ROWS;
+    // Build the condensed QP:
+    // P = 2 * (B' * W * B + R * I)
+    // q = 2 * B' * W * err
+    const VecXf weights = L_diag_;
+    const MatXf P_dense = 2.0f * (B_qp_.transpose() * weights.asDiagonal() * B_qp_ + cfg_.R_weight * MatXf::Identity(NU * N_, NU * N_));
+
+    const VecXf q = 2.0f * B_qp_.transpose() * weights.asDiagonal() * err;
+    // Update P using the exact upper-triangular CSC ordering used
+    // when generating the OSQP solver.
+    //
+    // Update q and the constraint bounds using the generated OSQP API.
+    // The generated workspace must have been initialized before this call.
+
+    // TODO: populate generated P-value and q-value arrays in their
+    // generated CSC order, then call OSQP matrix/vector update APIs.
+
+    // Vertical force bounds.
+    for (int i = 0; i < N_; ++i) {
+        for (int j = 0; j < NUM_LEGS; ++j) {
             const int k = NUM_LEGS * i + j;
-            mpc_cpg_update_lb_f(k, lb_(r));
-            mpc_cpg_update_ub_f(k, ub_(r));
+            const int r =
+                CONSTRAINTS_PER_FOOT * (NUM_LEGS * i + j)
+                + PYRAMID_ROWS;
+
+            // Write these into the generated lower/upper bound arrays
+            // at the force-constraint row indices.
+            (void)k;
+            (void)r;
         }
     }
 
-    mpc_cpg_solve();
+    // Call the generated OSQP solve entry point here.
+    // Check its status value, then copy the primal solution into U_out.
 
-    if (strcmp(mpc_CPG_Result.info->status, "solved") != 0) return false;
-    for (int k = 0; k < NU * N; k++) {
-        U_out(k) = mpc_CPG_Result.prim->U[k];
-    }
-    return true;
+    return false; // Replace after wiring the generated API.
 }
 
 MPCResult MPC::solve(const MPCProblem& problem) {

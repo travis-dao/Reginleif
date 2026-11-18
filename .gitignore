@@ -1,4 +1,5 @@
 /components/qp/c/
+.venv-cvxpy
 
 # macOS
 .DS_Store
@@ -19,7 +20,6 @@
 *.log
 
 # Build artifacts and directories
-build_test/
 **/build/
 build/
 *.o

@@ -27,22 +27,22 @@ namespace ServoConfig {
 	constexpr LegServoLimits limits[4] = {
 		{ // Front Left
 			{  45.0f, 180.0f }, 
-			{  40.0f, 135.0f }, 
+			{  0.0f, 135.0f }, 
 			{  0.0f, 135.0f } 
 		},
 		{ // Front Right
 			{  0.0f, 135.0f }, 
-			{  45.0f, 140.0f }, 
+			{  45.0f, 180.0f }, 
 			{  45.0f, 180.0f } 
 		},
 		{ // Back Right
 			{  45.0f, 170.0f }, 
-			{  45.0f, 140.0f }, 
+			{  45.0f, 180.0f }, 
 			{  45.0f, 180.0f }
 		 },
 		{ // Back Left
 			{  10.0f, 135.0f }, 
-			{  40.0f, 135.0f }, 
+			{  0.0f, 135.0f }, 
 			{  0.0f, 135.0f } 
 		},
 	};

@@ -5,8 +5,15 @@
 #include <Eigen/Geometry>
 #include <unsupported/Eigen/MatrixFunctions>  // for .exp()
 
-using MatX = Eigen::MatrixXf;
-using VecX = Eigen::VectorXf;
+using MatXf = Eigen::MatrixXf;
+using VecXf = Eigen::VectorXf;
+
+using Mat3f = Eigen::Matrix3f;
+using Vec3f = Eigen::Vector3f;
+
+template <typename T, int Rows, int Cols, int Options = Eigen::ColMajor>
+using Mat = Eigen::Matrix<T, Rows, Cols, Options>;
+
 using Sparse = Eigen::Sparse;
 
 template <typename T>

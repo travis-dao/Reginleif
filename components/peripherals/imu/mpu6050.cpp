@@ -65,7 +65,7 @@ void ComplementaryFilter::reset()
     last_us_ = 0;
 }
 
-void ComplementaryFilter::update(const IMU::Data &d, float dt)
+void ComplementaryFilter::update(const Imu::Data &d, float dt)
 {
     /* Angles implied by gravity alone */
     const float norm = std::sqrt(d.ax * d.ax + d.ay * d.ay + d.az * d.az);

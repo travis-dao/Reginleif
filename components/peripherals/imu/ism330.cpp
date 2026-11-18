@@ -64,7 +64,7 @@ inline int16_t le16(const uint8_t *p)
 
 inline float invSqrt(float x) { return 1.0f / std::sqrt(x); }
 
-inline bool accelValid(const IMU::Data &d)
+inline bool accelValid(const Imu::Data &d)
 {
     const float norm = std::sqrt(d.ax * d.ax + d.ay * d.ay + d.az * d.az);
     return norm > ACCEL_MIN_G && norm < ACCEL_MAX_G;
@@ -76,7 +76,7 @@ inline TickType_t periodTicks(uint16_t hz)
 }
 
 /* Quaternion for the roll/pitch implied by gravity, yaw = 0 */
-void quatFromAccel(const IMU::Data &d, float &q0, float &q1, float &q2, float &q3)
+void quatFromAccel(const Imu::Data &d, float &q0, float &q1, float &q2, float &q3)
 {
     const float norm = std::sqrt(d.ax * d.ax + d.ay * d.ay + d.az * d.az);
     const float ax = d.ax / norm, ay = d.ay / norm, az = d.az / norm;
@@ -102,7 +102,7 @@ void quatToEuler(float q0, float q1, float q2, float q3, float &roll, float &pit
 
 /* Time the filter since its last call, update it, and copy out the angles */
 template <typename Filter>
-void stepFilter(Filter &f, const IMU::IMU::Data &d, IMU::EulerAngles &out)
+void stepFilter(Filter &f, const Imu::Imu::Data &d, Imu::EulerAngles &out)
 {
     const int64_t now = esp_timer_get_time();
     const float dt = f.lastUs() ? (now - f.lastUs()) / 1e6f : 0.0f;
@@ -131,7 +131,7 @@ void MahonyFilter::reset()
     last_us_ = 0;
 }
 
-void MahonyFilter::seedFromAccel(const IMU::Data &d)
+void MahonyFilter::seedFromAccel(const Imu::Data &d)
 {
     quatFromAccel(d, q0_, q1_, q2_, q3_);
     ix_ = iy_ = iz_ = 0.0f;
@@ -144,7 +144,7 @@ void MahonyFilter::updateAngles()
     quatToEuler(q0_, q1_, q2_, q3_, roll_, pitch_, yaw_);
 }
 
-void MahonyFilter::update(const IMU::Data &d, float dt)
+void MahonyFilter::update(const Imu::Data &d, float dt)
 {
     const bool accel_ok = accelValid(d);
 
@@ -221,7 +221,7 @@ void MadgwickFilter::reset()
     last_us_ = 0;
 }
 
-void MadgwickFilter::seedFromAccel(const IMU::Data &d)
+void MadgwickFilter::seedFromAccel(const Imu::Data &d)
 {
     quatFromAccel(d, q0_, q1_, q2_, q3_);
     seeded_ = true;
@@ -233,7 +233,7 @@ void MadgwickFilter::updateAngles()
     quatToEuler(q0_, q1_, q2_, q3_, roll_, pitch_, yaw_);
 }
 
-void MadgwickFilter::update(const IMU::Data &d, float dt)
+void MadgwickFilter::update(const Imu::Data &d, float dt)
 {
     const bool accel_ok = accelValid(d);
 
@@ -461,7 +461,7 @@ esp_err_t Ism330::readRaw(Raw &raw)
     return ESP_OK;
 }
 
-esp_err_t Ism330::read(IMU::Data &d)
+esp_err_t Ism330::read(Imu::Data &d)
 {
     Raw r;
     ESP_RETURN_ON_ERROR(readRaw(r), TAG, "read raw");

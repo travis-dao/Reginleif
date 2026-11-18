@@ -84,7 +84,7 @@ void StateEstimator::updateContact(float dt) {
 
 // ----------------------------------------------------------------------
 const State& StateEstimator::update(float dt, const ImuCorrection& imu) {
-    if (!imu.valid || dt <= 0.0f) return state_;   // no IMU -> hold last estimate
+    if (!imu.valid || dt <= 0.0f) return state_;   // no Imu -> hold last estimate
     if (!initialized_) reset(Vec3f::Zero(), Vec3f::Zero(), imu);
 
     const Vec3f rpy  = toEigen(imu.rpy_rad);

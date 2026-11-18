@@ -11,5 +11,6 @@ idf_component_register(
     "leg/include"
     "stabilizer/include"
     "motion/include"
+    "posture/include"
   REQUIRES util peripherals motor mpc algorithms
 )

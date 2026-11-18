@@ -3,6 +3,7 @@
 #include "frame.h"
 #include "motion_config.h"
 #include "mpc.h"
+#include "posture.h"
 #include "srb_model.h"
 #include "state_estimator.h"
 #include "types.h"
@@ -23,6 +24,7 @@ MotionSubsystem::MotionSubsystem(
     mpc_(mpc_cfg),
     leg_controller_(leg_controller),
     state_estimator_(state_estimator_cfg, leg_controller),
+    posture_(),
     cfg_(cfg)
 {
     mode_ = STAND;
@@ -30,6 +32,9 @@ MotionSubsystem::MotionSubsystem(
     yaw_des_ = cfg.yaw_des.value_or(0.0f);
     state_ = state_estimator_.state();
     mpc_active_ = false;
+    vel_prev_ = 0.0f;
+    roll_des_ = 0.0f;
+    pitch_des_ = 0.0f;
 }
 // --------------- update ---------------
 void MotionSubsystem::update(const float dt_s, const ImuCorrection& imu) {
@@ -66,7 +71,7 @@ void MotionSubsystem::update(const float dt_s, const ImuCorrection& imu) {
     }
 
     // leg controller
-    leg_controller_.update(dt_s, imu);
+    leg_controller_.update(dt_s, state_estimator_.state(), imu);
 }
 
 const MPCResult* MotionSubsystem::step(const float dt_s, const ImuCorrection& imu) {
@@ -125,6 +130,20 @@ void MotionSubsystem::updateMode(const State& s0) {
     }
 }
 
+void MotionSubsystem::updatePosture(const float dt_s) {
+    auto [vel_mm, w] = leg_controller_.bodyTwist();
+    float vel = vel_mm * MM_TO_M;
+    float a = (vel - vel_prev_) / std::max(dt_s, 1e-6f);
+    vel_prev_ = vel;
+    Imu::EulerAngles out = posture_.update(dt_s, vel, w, a);
+    roll_des_ = out.roll;
+    pitch_des_ = out.pitch;
+    // if (cmd_.vel_cmd_mps < 0) {
+    //     pitch_des_ = 5.0f * DEG_TO_RAD;
+    // }
+    leg_controller_.setBodyTilt(roll_des_, pitch_des_);
+}
+
 
 // --------------- state estimator ---------------
 void MotionSubsystem::reset(const Vec3f& p0, const Vec3f& v0, const ImuCorrection& imu) { 
@@ -170,6 +189,8 @@ Vector<StateVec> MotionSubsystem::reference(const State& s0) const {
 
         VecXf x = VecXf::Zero(NX);
 
+        x[IDX_THETA] = roll_des_;
+        x[IDX_THETA + 1] = pitch_des_;
         x[IDX_THETA + 2] = yaw_end;
         x.segment<3>(IDX_POS) = p;
         x[IDX_OMEGA + 2] = w;  // yaw rate
@@ -211,7 +232,7 @@ Contact MotionSubsystem::contactSchedule() const {
 // Planted feet are fixed in the WORLD (so r shrinks/grows as the CoM advances);
 // a foot that lands inside the horizon is planted at its nominal touchdown point.
 Vector<FootRel> MotionSubsystem::footRelWorld(const State& s0, Vector<StateVec>& x_ref, const Contact contact) {
-    const Mat3f R0 = rotationMatrixYaw(s0.yaw);
+    const Mat3f R0 = rotationMatrixRPY(roll_des_, pitch_des_, s0.yaw);
     const auto feet_body = leg_controller_.footPositionsBody();
     const auto land_body = leg_controller_.landingTargetsBody();
 
@@ -227,7 +248,7 @@ Vector<FootRel> MotionSubsystem::footRelWorld(const State& s0, Vector<StateVec>&
     for (int i = 0; i < mpc_.N(); i++) {
         // COM @ start of step i
         const VecXf com = (i == 0) ? s0.pos : Vec3f(x_ref[i - 1].segment<3>(IDX_POS));
-        const Mat3f R = rotationMatrixYaw(x_ref[i][IDX_THETA + 2]);
+        const Mat3f R = rotationMatrixRPY(x_ref[i][IDX_THETA], x_ref[i][IDX_THETA + 1], x_ref[i][IDX_THETA + 2]);
 
         FootRel r{};
         for (int j = 0; j < NUM_LEGS; j++) {

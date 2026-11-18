@@ -26,7 +26,7 @@ Stabilizer::Stabilizer(const Config& config)
 }
 
 void Stabilizer::init(i2c_master_bus_handle_t bus) {
-    // Initialize IMU and connect to I2C bus
+    // Initialize Imu and connect to I2C bus
     esp_log_level_set("imu", ESP_LOG_ERROR);
 
     Ism330::Config cfg;
@@ -39,15 +39,15 @@ void Stabilizer::init(i2c_master_bus_handle_t bus) {
     ESP_ERROR_CHECK(imu_.init(cfg));
 
     vTaskDelay(pdMS_TO_TICKS(1000));
-    printf("Initialized IMU\n");
+    printf("Initialized Imu\n");
 
-    // Calibrate IMU
+    // Calibrate Imu
     vTaskDelay(pdMS_TO_TICKS(500));
-    printf("Calibrating IMU, do not move\n");
+    printf("Calibrating Imu, do not move\n");
 
     ESP_ERROR_CHECK(imu_.calibrate(200));
 
-    printf("IMU calibration complete\n");
+    printf("Imu calibration complete\n");
 }
 
 void Stabilizer::updateImu() {
@@ -121,11 +121,9 @@ Mat3 Stabilizer::getRotationMatrix(const Vec3& a) {
     const float sz = sinf(a.z);
 
     // Standard aerospace ZYX convention: R = Rz(yaw) * Ry(pitch) * Rx(roll).
-    return Mat3{
-        .data = {{
-            {{cz * cy,  cz * sy * sx - sz * cx,  cz * sy * cx + sz * sx}},
-            {{sz * cy,  sz * sy * sx + cz * cx,  sz * sy * cx - cz * sx}},
-            {{-sy,      cy * sx,                 cy * cx}}
-        }}
-    };
+    return Mat3{{{
+        {{cz * cy,  cz * sy * sx - sz * cx,  cz * sy * cx + sz * sx}},
+        {{sz * cy,  sz * sy * sx + cz * cx,  sz * sy * cx - cz * sx}},
+        {{-sy,      cy * sx,                 cy * cx}}
+    }}};
 }

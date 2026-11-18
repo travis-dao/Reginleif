@@ -4,7 +4,7 @@
 #include <cstdint>
 #include "esp_err.h"
 
-class IMU {
+class Imu {
     public:
         struct Config;
         

@@ -42,6 +42,16 @@ struct Mat3 {
             }
         }};
     }
+
+	constexpr Mat3 transpose() const {
+		Mat3 result{};
+		for (size_t i = 0; i < 3; ++i) {
+			for (size_t j = 0; j < 3; ++j) {
+				result[i][j] = data[j][i];
+			}
+		}
+		return result;
+    }
 };
 
 struct Vec3 {

@@ -44,13 +44,15 @@ class Leg {
 
 		bool grounded() const;
 
-		Vec3 nominalLandingPos() const;
+		// k 0.5~1.0
+		Vec3 nominalLandingPos(const Vec3& vel_act, const Vec3& vel_cmd, const float h_mm, const float k = 0.5) const;
 		Vec3 currFootPos() const;
 		Vec3 rearFootPos() const;
 		float swingTimeRemainingS() const;
 
 		void setMpcOffset(const Vec3& offset_lf);
 		void setStance(const Vec3& vel, const Vec3& step);
+		void setBodyTilt(const Mat3& R_T);
 
 		void resumeStance();
 		void hold();
@@ -73,6 +75,7 @@ class Leg {
 		LegState state_;
 		FootState foot_state_;
 		VelState vel_state_;
+		Mat3 tilt_R_T_;
 };
 
 #endif

@@ -3,7 +3,7 @@
  * @brief I2C driver for the ISM330DHCX 6-DoF accelerometer + gyroscope (ESP-IDF, i2c_master API).
  *
  * init() attaches the device, verifies WHO_AM_I, resets the chip and applies the
- * configuration (full-scale ranges, output IMU::data rate), so the sensor no longer
+ * configuration (full-scale ranges, output Imu::data rate), so the sensor no longer
  * needs to be configured externally before sampling.
  */
 #pragma once
@@ -26,7 +26,7 @@ class MahonyFilter {
 
         void setGains(float kp, float ki);
         void reset();
-        void update(const IMU::Data &d, float dt);          /* d.g* in deg/s, d.a* in g */
+        void update(const Imu::Data &d, float dt);          /* d.g* in deg/s, d.a* in g */
 
         float roll()  const { return roll_; }
         float pitch() const { return pitch_; }
@@ -36,7 +36,7 @@ class MahonyFilter {
         void    setLastUs(int64_t us) { last_us_ = us; }
 
     private:
-        void seedFromAccel(const IMU::Data &d);
+        void seedFromAccel(const Imu::Data &d);
         void updateAngles();
 
         float two_kp_ = 0.2f, two_ki_ = 0.0f;
@@ -54,7 +54,7 @@ class MadgwickFilter {
 
         void setBeta(float beta);
         void reset();
-        void update(const IMU::Data &d, float dt);
+        void update(const Imu::Data &d, float dt);
 
         float roll()  const { return roll_; }
         float pitch() const { return pitch_; }
@@ -64,7 +64,7 @@ class MadgwickFilter {
         void    setLastUs(int64_t us) { last_us_ = us; }
 
     private:
-        void seedFromAccel(const IMU::Data &d);
+        void seedFromAccel(const Imu::Data &d);
         void updateAngles();
 
         float beta_ = 0.1f;
@@ -76,13 +76,13 @@ class MadgwickFilter {
 
 /* ---------- driver ---------- */
 
-class Ism330: public IMU {
+class Ism330: public Imu {
     public:
         // config enums
         enum class AccelFs : uint8_t { G2 = 0, G4, G8, G16 };
         enum class GyroFs  : uint8_t { Dps125 = 0, Dps250, Dps500, Dps1000, Dps2000, Dps4000 };
 
-        /* Output IMU::data rate, applied to both accel and gyro */
+        /* Output Imu::data rate, applied to both accel and gyro */
         enum class Odr : uint8_t {
             Hz12_5 = 1, Hz26, Hz52, Hz104, Hz208, Hz417, Hz833, Hz1667, Hz3333, Hz6667
         };
@@ -125,7 +125,7 @@ class Ism330: public IMU {
         esp_err_t setGyroFs(GyroFs fs);
         esp_err_t setOdr(Odr odr);
 
-        /* --- IMU::data --- */
+        /* --- Imu::data --- */
         /** One burst read of temperature, gyro and accel. Keeps the samples coherent. */
         esp_err_t readRaw(Raw &raw);
 

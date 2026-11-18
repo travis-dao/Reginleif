@@ -27,7 +27,7 @@ class Stabilizer {
         Mat3 getRotationMatrix(const Vec3& a);
 
 		Ism330 imu_;
-		IMU::EulerAngles angles_deg_;
+		Imu::EulerAngles angles_deg_;
         Vec3 target_angles_deg_;
         Vec3 gyro_dps_;
         Mat3 rot_mat_;

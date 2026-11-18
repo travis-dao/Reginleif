@@ -11,6 +11,7 @@
 #include "state_estimator.h"
 
 #include "leg_controller.h"
+#include "posture.h"
 
 using Contact = Vector<Array<bool, NUM_LEGS>>;
 using Leg3 = Array<Vec3f, NUM_LEGS>;   // one 3-vector per leg (FL, FR, BR, BL)
@@ -39,7 +40,7 @@ class MotionSubsystem {
             float solve_period_s = 0.03f;
             float gain_mm_per_n = 1.0f;
             float max_correction_mm = 12.0f;
-            float ramp_s = 2.0f;
+            float ramp_s = 1.0f;
         };
 
         MotionSubsystem(
@@ -62,10 +63,12 @@ class MotionSubsystem {
         Array<Vec3, NUM_LEGS> footRelBody();
         Array<Vec3, NUM_LEGS> toOffsets(const FootRel& forces, const Array<bool, NUM_LEGS>& contact0, float yaw) const;
         void updateMode(const State& s0);
+        void updatePosture(const float dt_s);
 
         MPC mpc_;
         LegController& leg_controller_; // reference, base holds instance
         StateEstimator state_estimator_;
+        PostureShaper posture_;
         Config cfg_;
         Mode mode_;
         Command cmd_;
@@ -76,6 +79,9 @@ class MotionSubsystem {
         float t_since = 1e-9f;
         std::optional<Eigen::Vector2f> hold_xy_ = std::nullopt;
         float yaw_des_;
+        float vel_prev_;
+        float roll_des_;
+        float pitch_des_;
 
         Array<Vec3, 4> offsets_;
         std::optional<MPCResult> lastResult_;

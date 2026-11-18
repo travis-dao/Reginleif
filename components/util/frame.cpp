@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include "frame.h"
+#include "eigen.h"
 
 Vec3f toEigen(const Vec3& v) { 
     return {v.x, v.y, v.z};
@@ -34,13 +35,33 @@ Array<Vec3, 4> footForcesToPositions(const Array<Vec3, 4>& foot_forces, float ga
 }
 
 // ----------------------------------------------------------------------
-Mat3f rotationMatrixYaw(float yaw) {
+Mat3f rotationMatrixYaw(const float yaw) {
     const float c = cosf(yaw), s = sinf(yaw);
     Mat3f R;
-    R << c, -s, 0.0,
-         s,  c, 0.0,
-         0.0, 0.0, 1.0;
+    R << c, -s, 0.0f,
+         s,  c, 0.0f,
+         0.0f, 0.0f, 1.0f;
     return R;
+}
+
+Mat3f rotationMatrixRPY(const float roll, const float pitch, const float yaw) {
+    float cr = cosf(roll);  float sr = sinf(roll);
+    float cp = cosf(pitch); float sp = sinf(pitch);
+    float cy = cosf(yaw);   float sy = sinf(yaw);
+    
+    Mat3f Rz, Ry, Rx;
+
+    Rz << cy, -sy, 0.0f,
+          sy, cy, 0.0f,
+          0.0f, 0.0f, 1.0f;
+    Ry << cp, 0.0f, sp,
+          0.0f, 1.0f , 0.0f,
+          -sp, 0.0f, cp;
+    Rx << 1.0f, 0.0f, 0.0f,
+          0.0f, cr, -sr,
+          0.0f, sr, cr;
+
+    return Rz * Ry * Rx;
 }
 
 // ----------------------------------------------------------------------

@@ -30,6 +30,14 @@ bool outsideServoLimits(const Theta3& angles_deg, const int leg_idx) {
 static bool isRightLeg(const int id) { return id == 1 || id == 2; }
 static bool isFrontLeg(const int id) { return id == 0 || id == 1; }
 
+// cubic Hermite in xy whose end velocities equal the stance sweep
+// # t in [0,1], velocities in mm/s
+float hermite(const float p0, const float p1, const float v0, const float v1, const float T, const float t) {
+    float t2 = t*t; float t3 = t*t*t;
+    float h00 = 2*t3 - 3*t2 + 1; float h10 = t3 - 2*t2 + t;
+    float h01 = -2*t3 + 3*t2; float h11 = t3 - t2;
+    return h00*p0 + h10*T*v0 + h01*p1 + h11*T*v1;
+}
 
 // --------------- init ---------------
 Leg::Leg(const Config& cfg) {
@@ -54,6 +62,8 @@ Leg::Leg(const Config& cfg) {
 	stance_phase_ = 0.0f;
 	state_ = NEUTRAL;
 
+	tilt_R_T_ = Mat3::identity();
+
 	moveLeg();
 }
 
@@ -61,8 +71,8 @@ Leg::Leg(const Config& cfg) {
 // --------------- movement ---------------
 void Leg::moveLeg() {
 	// flip y pos
-	Vec3 adjusted_target_pos_lf = foot_state_.target;
-	adjusted_target_pos_lf.y *= isRightLeg(id_) ? -1.0f : 1.0f;
+	Vec3 target = foot_state_.target;
+	target.y *= isRightLeg(id_) ? -1.0f : 1.0f;
 
 	Theta3 target_angles_deg;
 
@@ -72,7 +82,7 @@ void Leg::moveLeg() {
 		.tibia_length_mm = TIBIA_LENGTH_MM,
 		.c_min = c_min,
 		.c_max = c_max
-	}, adjusted_target_pos_lf, target_angles_deg);
+	}, target, target_angles_deg);
 
 	if (reachable) {
 		// flip angles for reverse mounted servos (leg side)
@@ -145,15 +155,25 @@ void Leg::updateSwing(const float dt_s) {
 
     const Vec3& start = foot_state_.swing_start;
     const Vec3& target = foot_state_.swing_target;
+	const Vec3& sv = vel_state_.stance_vel;
 
-    // smooth step
-    const float alpha = t * t * (3.0f - 2.0f * t);
-
-    foot_state_.target.x = start.x + alpha * (target.x - start.x);
-    foot_state_.target.y = start.y + alpha * (target.y - start.y);
-
+    foot_state_.target.x = hermite(start.x, target.x, sv.x, sv.x, MovementConfig::SWING_DURATION_S, t);
+    foot_state_.target.y = hermite(start.y, target.y, sv.y, sv.y, MovementConfig::SWING_DURATION_S, t);
     // lift the foot above the start-to-target line
-    const float clearance = MovementConfig::STEP_HEIGHT_MM * pow(sinf(PI * t), 2);
+
+    float clearance;
+	// Asymmetric lift: fast ascent, gentle descent
+
+	if (t < MovementConfig::LIFT_FRACTION) {
+		// Fast lift: ease out toward maximum height
+		float u = t / MovementConfig::LIFT_FRACTION;
+		clearance = MovementConfig::STEP_HEIGHT_MM * (1.0 - powf((1.0 - u), 2));
+	} else {
+		// Gentle descent: ease in toward ground level
+		float u = (t - MovementConfig::LIFT_FRACTION) / (1.0 - MovementConfig::LIFT_FRACTION);
+		clearance = MovementConfig::STEP_HEIGHT_MM * (1.0 - powf(u, 2));
+	}
+		
     foot_state_.target.z = (start.z + t * (target.z - start.z)) + clearance;
 
     if (t >= 1.0f) {
@@ -180,32 +200,51 @@ void Leg::update(const float dt_s, Theta3& out_target_angles_deg, const ImuCorre
 	float alpha = 1.0 - exp(-dt_s / MPC_OFFSET_TAU_S);
 	foot_state_.offset += (offset_cmd - foot_state_.offset) * alpha;
 
+	Vec3 pos_ik = foot_state_.target;
+
+	Vec3 base = Offset::leg_base_pos_bf[id_];
+	Vec3 pos_bf = base + pos_ik;
+	pos_bf.rotate(tilt_R_T_);
+	pos_ik = pos_bf - base;
+
 	moveLeg();
 
 	// update variables
-	foot_state_.curr = foot_state_.target + foot_state_.offset;
+	foot_state_.curr = pos_ik + foot_state_.offset;
 	out_target_angles_deg = angles;
 }
 
 
 // --------------- setters ---------------
 void Leg::setMpcOffset(const Vec3& offset_lf) { foot_state_.offset_cmd = offset_lf; }
+
 void Leg::setStance(const Vec3& vel, const Vec3& step) { vel_state_.stance_vel = vel; vel_state_.step_vec = step; }
+
 void Leg::setState(const LegState state) { state_ = state; }
 
+void Leg::setBodyTilt(const Mat3& R_T) { tilt_R_T_ = R_T; }
 
 // --------------- getters ---------------
 bool Leg::grounded() const { return state_ != SWING; }
+
 float Leg::swingTimeRemainingS() const {
 	if (state_ == LegState::SWING) return 0.0f;
 	else return (1.0f - swing_phase_) * MovementConfig::SWING_DURATION_S;
 }
-Vec3 Leg::nominalLandingPos() const {
+
+Vec3 Leg::nominalLandingPos(const Vec3& vel_act, const Vec3& vel_cmd, const float h_mm, const float k) const {
 	Vec3 target = Offset::neutral_foot_pos_lf[id_];
 	target.x += vel_state_.step_vec.x / 2.0f;
 	target.y += vel_state_.step_vec.y / 2.0f;
+
+	float omega = std::sqrt(9.81f * 1e3f / h_mm);
+
+	target.x -= k * (vel_act.x - vel_cmd.x) / omega;
+	target.y -= k * (vel_act.y - vel_cmd.y) / omega;
+
 	return target;
 }
+
 Vec3 Leg::rearFootPos() const {
 	Vec3 rear = Offset::neutral_foot_pos_lf[id_];
 	rear.x -= vel_state_.step_vec.x / 2.0f;
@@ -213,6 +252,7 @@ Vec3 Leg::rearFootPos() const {
 
 	return rear;
 }
+
 Vec3 Leg::currFootPos() const { return foot_state_.curr; }
 
 // --------------- pid ---------------

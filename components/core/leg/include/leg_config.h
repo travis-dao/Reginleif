@@ -11,7 +11,8 @@ const float c_max = FEMUR_LENGTH_MM + TIBIA_LENGTH_MM;
 const float c_min = fabsf(FEMUR_LENGTH_MM - TIBIA_LENGTH_MM);
 
 enum class Gait {
-    WALK,
+    WALK_F,
+    WALK_B,
     TURN_R,
     TURN_L
 };
@@ -21,26 +22,30 @@ class MovementConfig {
         static constexpr float STEP_LENGTH_MM = 100.0f;
         static constexpr float STEP_HEIGHT_MM = 60.0f;
         static constexpr float SWING_DURATION_S = 0.4f;
-        static constexpr float GAP_DURATION_S = 0.1f;
+        static constexpr float GAP_DURATION_S = SWING_DURATION_S / 4.0f;
+        static constexpr float LIFT_FRACTION = 0.4f;
 
         using LegOrder = Array<int, 4>;
 
-        static constexpr LegOrder ORDER_WALK   = {0, 2, 1, 3};
-        static constexpr LegOrder ORDER_TURN_R = {0, 1, 2, 3};
+        static constexpr LegOrder ORDER_WALK_F = {0, 2, 1, 3};
+        static constexpr LegOrder ORDER_WALK_B = {2, 0, 3, 1};
+        static constexpr LegOrder ORDER_TURN_R = {1, 2, 3, 0};
         static constexpr LegOrder ORDER_TURN_L = {0, 3, 2, 1};
 
         // Get the ordered list of swing legs for a movement.
         static constexpr const LegOrder& getOrder(Gait movement) {
             switch (movement) {
-                case Gait::WALK:
-                    return ORDER_WALK;
+                case Gait::WALK_F:
+                    return ORDER_WALK_F;
+                case Gait::WALK_B:
+                    return ORDER_WALK_B;
                 case Gait::TURN_R:
                     return ORDER_TURN_R;
                 case Gait::TURN_L:
                     return ORDER_TURN_L;
             }
 
-            return ORDER_WALK;
+            return ORDER_WALK_F;
         }
 
         // Get the next leg after the current swing leg.

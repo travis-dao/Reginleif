@@ -26,7 +26,7 @@ class ComplementaryFilter {
         /* One filter step on an already-read sample (pure math, no I2C). Use this if you
         * manage timing yourself. The first call seeds the angles from the accelerometer.
         * dt is seconds since the previous update. */
-        void update(const IMU::Data &d, float dt);
+        void update(const Imu::Data &d, float dt);
 
         float roll() const  { return roll_; }
         float pitch() const { return pitch_; }
@@ -43,7 +43,7 @@ class ComplementaryFilter {
         int64_t last_us_ = 0;
 };
 
-class Mpu6050: public IMU {
+class Mpu6050: public Imu {
     public:
         // config enums
         enum class AccelFs : uint8_t { G2 = 0, G4 = 1, G8 = 2, G16 = 3 };

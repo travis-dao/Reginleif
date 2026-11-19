@@ -4,7 +4,6 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
-#include "mpu6050.h"
 #include "ism330.h"
 
 

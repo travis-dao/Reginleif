@@ -4,44 +4,13 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
-#include "base.h"
 #include "i2c.h"
-#include "motion_subsystem.h"
-#include "rtos_utils.h"
-#include "stabilizer.h"
-#include "state_estimator.h"
+#include "base.h"
+#include "imu_subsystem.h"
 
-static const char *TAG = "main";
+// static const char *TAG = "main";
 
-Mailbox<ImuCorrection> imu_correction;
-
-MPC::Config mpc_cfg;
-MotionSubsystem::Config motion_system_cfg;
-StateEstimator::Config state_estimator_cfg;
-
-static void stabilizer_task(void *arg) {   
-    auto *stabilizer = static_cast<Stabilizer*>(arg);
-
-    constexpr TickType_t period = pdMS_TO_TICKS(5);   // 200 Hz
-    int64_t last_us = esp_timer_get_time();
-    TickType_t last_wake = xTaskGetTickCount();
-
-    while (true) {
-        int64_t now_us = esp_timer_get_time();
-        float dt = (now_us - last_us) * 1e-6f;
-        last_us = now_us;
-
-        // Guard against a bad dt (first iteration, or a long stall)
-        if (dt <= 0.0f || dt > 0.05f) dt = 0.005f;
-
-        ImuCorrection out{};
-        stabilizer->update(dt, out);
-        out.stamp_us = now_us;
-        imu_correction.publish(out);
-
-        vTaskDelayUntil(&last_wake, period);
-    }
-}
+ImuMailbox imu_mailbox;
 
 static void gait_task(void *arg) {
     auto *base = static_cast<Base*>(arg);
@@ -54,11 +23,14 @@ static void gait_task(void *arg) {
         int64_t now_us = esp_timer_get_time();
         float dt = (now_us - last_us) * 1e-6f;
         last_us = now_us;
+        
+        ImuSample imu;
+        if (!imu_mailbox.peek(imu) || (uint32_t)esp_timer_get_time() - imu.stamp_us > 50000) {
+            imu.valid = false;   // nothing published yet, or older than 50 ms
+        }
 
-        ImuCorrection c{};                                   // identity default
-        if (!imu_correction.read(c, 30000)) c = ImuCorrection{};    // stale -> no correction
+        base->update(dt, imu);
 
-        base->update(dt, c);
 
         vTaskDelayUntil(&last_wake, period);
     }
@@ -67,26 +39,31 @@ static void gait_task(void *arg) {
 extern "C" void app_main() {
     printf("Initialization Sequence\n");
 
-    static I2CBus i2c_;
-    ESP_ERROR_CHECK(i2c_.init());
+    static I2CBus i2c;
+    ESP_ERROR_CHECK(i2c.init());
 
-    static Stabilizer stabilizer_({
-        0.0f, 
-        0.0f, 
-        0.0f
-    });
-    
-    static Base base_({
-        motion_system_cfg,
-        mpc_cfg,
-        state_estimator_cfg
-    });
+    static Stabilizer stabilizer(imu_mailbox, Stabilizer::Config{});
+    static Base base;
 
-    base_.init(i2c_.handle());
-    stabilizer_.init(i2c_.handle());
-    
-    imu_correction.init();
+    base.init();
+    stabilizer.init(i2c.handle());
 
-    xTaskCreatePinnedToCore(stabilizer_task, "imu", 4096, &stabilizer_, 6, nullptr, 1);
-    xTaskCreatePinnedToCore(gait_task, "gait", 4096, &base_, 5, nullptr, 0);
+    xTaskCreatePinnedToCore(
+        Stabilizer::taskEntry, 
+        "imu", 
+        4096, 
+        &stabilizer, 
+        6, 
+        nullptr, 
+        1
+    );
+    xTaskCreatePinnedToCore(
+        gait_task, 
+        "motion", 
+        4096, 
+        &base, 
+        5, 
+        nullptr, 
+        0
+    );
 }

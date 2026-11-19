@@ -6,11 +6,14 @@
  * configuration (full-scale ranges, output Imu::data rate), so the sensor no longer
  * needs to be configured externally before sampling.
  */
-#pragma once
+
+#ifndef ISM330_h
+#define ISM330_h
 
 #include "driver/i2c_master.h"
 #include "imu.h"
 #include "types.h"
+
 
 constexpr uint8_t ISM_I2C_ADDR_DEFAULT = 0x6A;   /* SDO/SA0 low; 0x6B when high */
 
@@ -104,7 +107,7 @@ class Ism330: public Imu {
         };
         
 
-        Ism330() = default;
+        explicit Ism330() = default;
         ~Ism330();
 
         /* Owns an I2C device handle: not copyable */
@@ -137,7 +140,7 @@ class Ism330: public Imu {
         esp_err_t readVectors(Vec3 &accel, Vec3 &gyro);   /* replaces getAGVectors() */
 
         /** Temperature relative to 25 C (reads 0 at 25 C): this is how the chip is calibrated. */
-        esp_err_t readTemperature(float &temp_offset_c);
+        esp_err_t readTemperature(float &tempoffset__c);
 
         /* --- calibration (keep the board still; level for calibrateAccel) --- */
         esp_err_t calibrateGyro(uint16_t samples = 200);
@@ -181,3 +184,5 @@ class Ism330: public Imu {
 
         Vec3 last_gyro_{0.0f, 0.0f, 0.0f};
 };
+
+#endif

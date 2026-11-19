@@ -467,7 +467,7 @@ esp_err_t Ism330::read(Imu::Data &d)
     ESP_RETURN_ON_ERROR(readRaw(r), TAG, "read raw");
 
     /* 256 LSB/degC, reads 0 at 25 degC */
-    const float t = r.temp / 256.0f;
+    // const float t = r.temp / 256.0f;
 
     d.ax = r.ax * accel_g_per_lsb_ - accel_bias_[0];
     d.ay = r.ay * accel_g_per_lsb_ - accel_bias_[1];
@@ -504,11 +504,11 @@ esp_err_t Ism330::readVectors(Vec3 &accel, Vec3 &gyro)
     return ESP_OK;
 }
 
-esp_err_t Ism330::readTemperature(float &temp_offset_c)
+esp_err_t Ism330::readTemperature(float &tempoffset__c)
 {
     uint8_t b[2];
     ESP_RETURN_ON_ERROR(readRegs(REG_OUT_TEMP_L, b, sizeof(b)), TAG, "temp read");
-    temp_offset_c = le16(b) / 256.0f;
+    tempoffset__c = le16(b) / 256.0f;
     return ESP_OK;
 }
 

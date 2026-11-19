@@ -1,6 +1,11 @@
 #ifndef TYPES_h
 #define TYPES_h
 
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <unsupported/Eigen/MatrixFunctions>  // for .exp()
+
 #include <cstdint>
 #include <math.h>
 #include <array>
@@ -22,60 +27,15 @@ using Array = std::array<T, N>;
 template <typename T1, typename T2, typename T3>
 using Triple = std::tuple<T1, T2, T3>;
 
-struct Mat3 {
-    Array<Array<float, 3>, 3> data{};
+using Mat3 = Eigen::Matrix3f;
+using Vec3 = Eigen::Vector3f;
 
-    constexpr auto& operator[](size_t i) {
-        return data[i];
-    }
+template <typename T, int Rows, int Cols, int Options = Eigen::ColMajor>
+using Mat = Eigen::Matrix<T, Rows, Cols, Options>;
 
-    constexpr const auto& operator[](size_t i) const {
-        return data[i];
-    }
+using Sparse = Eigen::Sparse;
 
-    static constexpr Mat3 identity() {
-        return Mat3{{
-            {
-                {1.0f, 0.0f, 0.0f},
-                {0.0f, 1.0f, 0.0f},
-                {0.0f, 0.0f, 1.0f}
-            }
-        }};
-    }
-
-	constexpr Mat3 transpose() const {
-		Mat3 result{};
-		for (size_t i = 0; i < 3; ++i) {
-			for (size_t j = 0; j < 3; ++j) {
-				result[i][j] = data[j][i];
-			}
-		}
-		return result;
-    }
-};
-
-struct Vec3 {
-	float x, y, z = 0.0f;
-
-	Vec3 operator+(const Vec3& other) const;
-	Vec3& operator+=(const Vec3& other);
-	Vec3 operator-(const Vec3& other) const;
-	Vec3 operator*(float scalar) const;
-	Vec3& operator*=(float scalar);
-	Vec3 operator*(const Vec3& other) const;
-	Vec3& operator*=(const Vec3& other);
-	Vec3 operator/(float scalar) const;
-	bool operator==(const Vec3& other);
-	void print() const;
-	void println() const;
-	float dis(const Vec3& other) const;
-	float dot(const Vec3& other) const;
-	float dot2D(const Vec3& other) const;
-	float cross2D(const Vec3& other) const;
-	Vec3 cross(const Vec3& other) const;
-	Vec3 rotate(const Mat3& rot_mat) const;
-};
-
-float dis(const float a, const float b);
+template <typename T>
+using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
 
 #endif
